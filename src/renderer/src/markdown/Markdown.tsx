@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo } from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkDirective from 'remark-directive'
 import remarkMath from 'remark-math'
@@ -7,6 +7,8 @@ import rehypeKatex from 'rehype-katex'
 import rehypeSlug from 'rehype-slug'
 import { ExternalLink, Link2 } from 'lucide-react'
 import { remarkDeskLearner } from './remarkDeskLearner'
+import { CourseLink } from './CourseLinks'
+import { parseCourseLink } from './courseLinkResolver'
 import { CodeBlock } from './components/CodeBlock'
 import { Mermaid } from './components/Mermaid'
 import { InlineQuiz } from './components/InlineQuiz'
@@ -37,6 +39,10 @@ function nodeText(children: React.ReactNode): string {
   return ''
 }
 
+function courseAwareUrlTransform(url: string): string {
+  return parseCourseLink(url) ? url : defaultUrlTransform(url)
+}
+
 function Anchor({
   href,
   children
@@ -44,6 +50,11 @@ function Anchor({
   href?: string
   children?: React.ReactNode
 }): React.JSX.Element {
+  // `lesson:day-12` / `test:test-week-4` become in-app pills.
+  if (href && parseCourseLink(href)) {
+    return <CourseLink href={href}>{children}</CourseLink>
+  }
+
   const external = !!href && /^(https?:|mailto:)/i.test(href)
   if (external) {
     return (
@@ -224,6 +235,11 @@ export function Markdown({
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkDirective, remarkDeskLearner, remarkMath]}
           rehypePlugins={[rehypeSlug, rehypeKatex]}
+          // react-markdown only trusts http(s)/mailto/irc/xmpp and rewrites
+          // everything else to an empty href, which would silently swallow our
+          // `lesson:` / `test:` links. Let those through; everything else keeps
+          // the default sanitising behaviour.
+          urlTransform={courseAwareUrlTransform}
           components={components}
         >
           {children}

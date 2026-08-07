@@ -12,7 +12,7 @@ function isTypingTarget(el: EventTarget | null): boolean {
 
 export function useGlobalShortcuts(): void {
   const navigate = useNavigate()
-  const { setPaletteOpen, setSearchOpen } = useUi.getState()
+  const { setPaletteOpen, setSearchOpen, setTeacherOpen } = useUi.getState()
   const update = useSettings((s) => s.update)
 
   useEffect(() => {
@@ -40,10 +40,16 @@ export function useGlobalShortcuts(): void {
         void update({ sidebarCollapsed: !sidebarCollapsed })
         return
       }
+      if (mod && e.key === '/') {
+        e.preventDefault()
+        setTeacherOpen(!useUi.getState().teacherOpen)
+        return
+      }
       if (e.key === 'Escape') {
         const ui = useUi.getState()
         if (ui.paletteOpen) ui.setPaletteOpen(false)
         else if (ui.searchOpen) ui.setSearchOpen(false)
+        else if (ui.teacherOpen) ui.setTeacherOpen(false)
         else if (ui.notesOpen) ui.setNotesOpen(false)
         return
       }
@@ -59,5 +65,5 @@ export function useGlobalShortcuts(): void {
 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [navigate, setPaletteOpen, setSearchOpen, update])
+  }, [navigate, setPaletteOpen, setSearchOpen, setTeacherOpen, update])
 }

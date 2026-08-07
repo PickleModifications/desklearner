@@ -1,0 +1,216 @@
+{
+  "id": "test-week-3",
+  "title": "Chapter 3 Test: CI/CD & Observability",
+  "description": "Sixteen questions on pipelines, deployment strategies, structured logging, metrics, traces and incident response.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 30,
+  "questions": [
+    {
+      "id": "w3-q01",
+      "type": "single",
+      "prompt": "What is the single distinguishing difference between continuous delivery and continuous deployment?",
+      "options": [
+        "Delivery runs tests; deployment does not",
+        "Deployment has no human approval gate before production",
+        "Delivery only works with containers",
+        "Deployment requires feature flags"
+      ],
+      "answer": 1,
+      "explanation": "Both build, test and produce a deployable artifact. Delivery keeps a human decision before production; deployment removes it. Most organisations do continuous delivery and call it continuous deployment."
+    },
+    {
+      "id": "w3-q02",
+      "type": "single",
+      "prompt": "Why does 'build once, promote the same artifact' matter more than rebuilding per environment?",
+      "options": [
+        "Rebuilding uses more CI minutes",
+        "A rebuild can resolve different dependency versions, so what you tested is not what you shipped",
+        "Container registries charge per build",
+        "Rebuilding invalidates the Git history"
+      ],
+      "answer": 1,
+      "explanation": "Speed is a secondary benefit. The substantive reason is determinism — a transitive dependency publishing a patch release between the staging and production builds means the artifact validated in staging is not the one running in production. This produces the 'but it worked in staging' class of incident."
+    },
+    {
+      "id": "w3-q03",
+      "type": "ordering",
+      "prompt": "Put the expand/contract steps for adding a NOT NULL column in the correct order.",
+      "items": [
+        "Drop the old column in a later release",
+        "Add the new column as nullable",
+        "Backfill data and deploy code writing to both columns",
+        "Add the NOT NULL constraint once nothing reads the old column"
+      ],
+      "answer": [
+        "Add the new column as nullable",
+        "Backfill data and deploy code writing to both columns",
+        "Add the NOT NULL constraint once nothing reads the old column",
+        "Drop the old column in a later release"
+      ],
+      "explanation": "Three or four deploys instead of one. That is the price of being able to roll back at any point — and skipping it is how a rollback turns into an outage, because the previous version cannot run against the new schema.",
+      "points": 3
+    },
+    {
+      "id": "w3-q04",
+      "type": "matching",
+      "prompt": "Match each deployment strategy to its defining trade-off.",
+      "pairs": [
+        { "left": "Blue/green", "right": "Instant rollback, at the cost of double infrastructure during the deploy" },
+        { "left": "Canary", "right": "Tiny blast radius on real traffic, but needs traffic splitting and trustworthy metrics" },
+        { "left": "Rolling", "right": "Cheap and built in, but rollback is another slow rolling deploy" },
+        { "left": "Feature flags", "right": "Separates deployment from release, at the cost of accumulating code paths" }
+      ],
+      "explanation": "Rolling, canary and blue/green all have both versions live at some point, so the database schema must be compatible with both. Feature flags are the only one that decouples deployment from user-visible release.",
+      "points": 3
+    },
+    {
+      "id": "w3-q05",
+      "type": "single",
+      "prompt": "Why is OIDC federation preferable to storing an AWS access key as a GitHub secret?",
+      "options": [
+        "OIDC workflows run faster",
+        "There is no long-lived credential to leak; the token is short-lived and bound to repository, branch and environment claims",
+        "GitHub secrets are stored in plain text",
+        "AWS charges for access keys"
+      ],
+      "answer": 1,
+      "explanation": "GitHub secrets are encrypted, but they are still standing credentials in a system that executes code from pull requests. OIDC issues a one-hour credential scoped by the sub claim — which is why scoping that claim to a specific branch or environment is the whole security of the arrangement.",
+      "points": 2
+    },
+    {
+      "id": "w3-q06",
+      "type": "boolean",
+      "prompt": "Pinning a third-party GitHub Action to a version tag such as `@v2` is sufficient protection against supply-chain compromise.",
+      "answer": false,
+      "explanation": "Tags are mutable — the owner can repoint @v2 at any commit, including malicious code. Pin to a full commit SHA with the version in a trailing comment."
+    },
+    {
+      "id": "w3-q07",
+      "type": "single",
+      "prompt": "What is the primary operational reason to emit structured JSON logs rather than formatted text?",
+      "options": [
+        "JSON compresses better",
+        "Events become queryable and aggregatable by field instead of requiring per-format regex parsing",
+        "CloudWatch requires JSON",
+        "Structured logs are smaller"
+      ],
+      "answer": 1,
+      "explanation": "Structured logs are usually slightly larger, and any text is accepted. The decisive benefit is that fields can be filtered, grouped and aggregated directly — structured logging turns grep into SQL."
+    },
+    {
+      "id": "w3-q08",
+      "type": "multi",
+      "prompt": "Which should **never** appear in a log line? Select all that apply.",
+      "options": [
+        "A correlation ID",
+        "A session token",
+        "A full payment card number",
+        "A database connection string"
+      ],
+      "answer": [1, 2, 3],
+      "explanation": "Logs are copied to aggregators, backed up, and retained for years with looser access controls than your database. A secret in a log is a secret in a dozen places you have forgotten about. Correlation IDs are exactly what you should be logging.",
+      "points": 2
+    },
+    {
+      "id": "w3-q09",
+      "type": "single",
+      "prompt": "Which sampling policy is correct for a high-volume service?",
+      "options": [
+        "Sample everything at 1%, including errors",
+        "Keep 100% of errors and sample successful requests",
+        "Sample errors at 10% and keep all successes",
+        "Never sample; retain everything indefinitely"
+      ],
+      "answer": 1,
+      "explanation": "Successful requests are largely interchangeable, so sampling them is fine. Sampling errors means the one occurrence of the bug you are chasing may simply never have been recorded — and you will spend a day concluding the problem is intermittent when it is not."
+    },
+    {
+      "id": "w3-q10",
+      "type": "single",
+      "prompt": "Your Lambda error-rate alarm has been quiet for six hours but customers report the service is down. What monitoring gap explains this?",
+      "options": [
+        "The alarm period is too short",
+        "No alarm on a drop in traffic — if no requests arrive, no errors are recorded",
+        "Log retention is too low",
+        "The metric filter is missing defaultValue=0"
+      ],
+      "answer": 1,
+      "explanation": "An error-rate alarm can only fire when requests are being processed. If something upstream stopped calling you, invocations fall to zero, errors stay at zero, and the alarm stays green while the service is effectively down.",
+      "points": 2
+    },
+    {
+      "id": "w3-q11",
+      "type": "single",
+      "prompt": "Why is `customer_id` a bad choice for a CloudWatch metric **dimension**?",
+      "options": [
+        "Dimensions must be numeric",
+        "Every unique dimension combination is a separately billed metric, so high cardinality is expensive",
+        "CloudWatch rejects string dimensions",
+        "It would break the metric filter"
+      ],
+      "answer": 1,
+      "explanation": "Fifty thousand customers means fifty thousand metrics and a very memorable invoice. High-cardinality identifiers belong in log fields, which are cheap and queryable; low-cardinality categories like environment or status class belong in dimensions.",
+      "points": 2
+    },
+    {
+      "id": "w3-q12",
+      "type": "single",
+      "prompt": "A request spanning five services takes 4.6 seconds. Each service's logs look normal. What does distributed tracing add?",
+      "options": [
+        "More detailed error messages",
+        "Time attribution across services, showing exactly which span consumed the 4.2 seconds",
+        "Automatic alerting on slow requests",
+        "Longer log retention"
+      ],
+      "answer": 1,
+      "explanation": "Each service individually looks fine because none is aware of the whole. A trace shows the causal timeline, making it immediately visible which operation in which service consumed the time."
+    },
+    {
+      "id": "w3-q13",
+      "type": "fill-blank",
+      "prompt": "Complete the W3C trace context header name and what makes tracing break.",
+      "text": "Trace context is propagated in the {{0}} header. Tracing breaks entirely if even one service in the chain fails to {{1}} it.",
+      "blanks": [
+        ["traceparent", "traceparent header"],
+        ["propagate", "forward", "pass on", "pass"]
+      ],
+      "explanation": "One service that drops the header produces two disconnected traces with no way to relate them. This is the most common reason tracing is installed and useless.",
+      "points": 2
+    },
+    {
+      "id": "w3-q14",
+      "type": "single",
+      "prompt": "Which statement about SLOs and error budgets is correct?",
+      "options": [
+        "An SLA is always stricter than the SLO",
+        "The error budget is 100% minus the SLO, and it converts risk decisions into arithmetic",
+        "Error budgets only apply to availability, not latency",
+        "An SLI is the contractual promise made to customers"
+      ],
+      "answer": 1,
+      "explanation": "The SLA is the contractual promise and is always looser than the internal SLO. An SLI is the measurement. The error budget — 0.5% at a 99.5% SLO, about 3.6 hours in 30 days — turns 'should we ship this?' into a question with a number.",
+      "points": 2
+    },
+    {
+      "id": "w3-q15",
+      "type": "single",
+      "prompt": "At 3am you are paged for a service you have never worked on. What do you do first?",
+      "options": [
+        "Read the source code to understand the architecture",
+        "Open the runbook, establish blast radius, and check what deployed recently",
+        "Wake a developer who knows the service",
+        "Restart the service and see whether that helps"
+      ],
+      "answer": 1,
+      "explanation": "The runbook exists exactly for this. Establishing scope and correlating with recent change are the two highest-yield first steps. Blind restarts destroy evidence and usually do not help."
+    },
+    {
+      "id": "w3-q16",
+      "type": "boolean",
+      "prompt": "During an incident you should fully understand the root cause before restoring service, so you do not mask the problem.",
+      "answer": false,
+      "explanation": "Mitigation and resolution are different. Restoring service is the priority; the evidence is in the logs and will still be there tomorrow. Teams that insist on understanding before restoring extend outages by hours."
+    }
+  ]
+}

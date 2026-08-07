@@ -90,13 +90,7 @@ export interface LessonDocument {
  * ------------------------------------------------------------------ */
 
 export type QuestionType =
-  | 'single'
-  | 'multi'
-  | 'boolean'
-  | 'short'
-  | 'ordering'
-  | 'matching'
-  | 'fill-blank'
+  'single' | 'multi' | 'boolean' | 'short' | 'ordering' | 'matching' | 'fill-blank'
 
 interface BaseQuestion {
   id: string
@@ -207,14 +201,7 @@ export interface TestAttempt {
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type AccentName =
-  | 'indigo'
-  | 'violet'
-  | 'blue'
-  | 'teal'
-  | 'emerald'
-  | 'amber'
-  | 'rose'
-  | 'slate'
+  'indigo' | 'violet' | 'blue' | 'teal' | 'emerald' | 'amber' | 'rose' | 'slate'
 export type Density = 'comfortable' | 'compact'
 export type ReaderFont = 'sans' | 'serif' | 'mono'
 
@@ -233,6 +220,10 @@ export interface Settings {
   confirmBeforeReset: boolean
   autoBackup: boolean
   dailyGoalMinutes: number
+  /** Master switch for the Teacher AI. Off until the learner adds an API key. */
+  aiEnabled: boolean
+  /** Show the model's summarised reasoning above each answer. */
+  aiShowThinking: boolean
   lastCourseId?: string
   lastLessonPath?: string
 }
@@ -251,7 +242,9 @@ export const DEFAULT_SETTINGS: Settings = {
   showLessonNumbers: true,
   confirmBeforeReset: true,
   autoBackup: true,
-  dailyGoalMinutes: 30
+  dailyGoalMinutes: 30,
+  aiEnabled: false,
+  aiShowThinking: true
 }
 
 /* ------------------------------------------------------------------ *
@@ -307,6 +300,149 @@ export const EMPTY_PROGRESS: ProgressState = {
   xp: 0,
   streak: 0,
   longestStreak: 0
+}
+
+/* ------------------------------------------------------------------ *
+ * Teacher AI
+ * ------------------------------------------------------------------ */
+
+export type TeacherRole = 'user' | 'assistant'
+export type AttachmentKind = 'image' | 'pdf' | 'text'
+
+/**
+ * A saved attachment. Only the descriptor lives in `chats.json`; the bytes are
+ * written to `<userData>/chat-attachments/` so the store stays small.
+ */
+export interface TeacherAttachment {
+  id: string
+  kind: AttachmentKind
+  name: string
+  mediaType: string
+  sizeBytes: number
+  /** File name relative to `<userData>/chat-attachments/`. */
+  file: string
+  /** Small data URI used by the composer tray and message bubbles. Images only. */
+  thumb?: string
+}
+
+/** Staged in the composer but not yet sent. Carries the bytes. */
+export interface PendingAttachment {
+  id: string
+  kind: AttachmentKind
+  name: string
+  mediaType: string
+  sizeBytes: number
+  /** base64, without a `data:` prefix. */
+  data: string
+  thumb?: string
+}
+
+export interface TeacherMessage {
+  id: string
+  role: TeacherRole
+  text: string
+  /** Summarised reasoning, when the model produced any. */
+  thinking?: string
+  attachments?: TeacherAttachment[]
+  createdAt: string
+  error?: string
+}
+
+/** `courseId/chapterId/lessonId` for lessons, `courseId/test/testId` for tests. */
+export type ThreadKey = string
+
+export interface TeacherThread {
+  key: ThreadKey
+  title: string
+  messages: TeacherMessage[]
+  updatedAt: string
+}
+
+export interface ChatState {
+  threads: Record<ThreadKey, TeacherThread>
+}
+
+export const EMPTY_CHATS: ChatState = { threads: {} }
+
+/** Everything the main process needs to build the prompt for one turn. */
+/** One entry in the course map the Teacher is given. */
+export interface OutlineLesson {
+  id: string
+  title: string
+  done: boolean
+  /** True for the lesson the learner currently has open. */
+  current?: boolean
+}
+
+export interface OutlineChapter {
+  id: string
+  title: string
+  lessons: OutlineLesson[]
+  testId?: string
+  testTitle?: string
+  /** Best percentage scored on this chapter's test, if it has been attempted. */
+  testBest?: number
+}
+
+/**
+ * A compact map of the whole course — titles only, no bodies — so the Teacher
+ * can place the current lesson in the syllabus: what has already been covered,
+ * what is still ahead, and where a topic actually belongs.
+ */
+export interface CourseOutline {
+  subtitle?: string
+  description?: string
+  chapters: OutlineChapter[]
+  lessonsCompleted: number
+  lessonsTotal: number
+}
+
+export interface TeacherContext {
+  kind: 'lesson' | 'test'
+  courseId: string
+  courseTitle: string
+  chapterTitle?: string
+  lessonTitle: string
+  /** Lesson markdown, or a digest of the questions the learner missed. */
+  body: string
+  objectives?: string[]
+  keyTerms?: Array<{ term: string; definition: string }>
+  /** The whole syllabus, so answers can reference other lessons. */
+  outline?: CourseOutline
+  /** Nearest heading to the viewport, so the AI knows where the learner is. */
+  currentHeading?: string
+  scrollPercent?: number
+}
+
+export interface TeacherSendRequest {
+  requestId: string
+  threadKey: ThreadKey
+  context: TeacherContext
+  /** Prior turns, already trimmed by the renderer. */
+  history: TeacherMessage[]
+  prompt: string
+  /** Staged in the composer; all sent together as a single user turn. */
+  attachments: PendingAttachment[]
+}
+
+export interface TeacherSendResult {
+  ok: boolean
+  error?: string
+  /** Descriptors for the attachments that were persisted for this turn. */
+  attachments?: TeacherAttachment[]
+}
+
+export type TeacherStreamEvent =
+  | { requestId: string; type: 'thinking-delta'; text: string }
+  | { requestId: string; type: 'text-delta'; text: string }
+  | { requestId: string; type: 'done'; stopReason: string | null; model: string }
+  | { requestId: string; type: 'error'; message: string }
+
+export interface AiKeyStatus {
+  configured: boolean
+  lastFour?: string
+  /** False when the OS has no credential store; the key cannot be persisted. */
+  encryptionAvailable: boolean
 }
 
 /* ------------------------------------------------------------------ *
@@ -395,6 +531,21 @@ export interface DeskLearnerApi {
     close(): void
     isMaximized(): Promise<boolean>
     onMaximizeChange(cb: (maximized: boolean) => void): () => void
+  }
+  ai: {
+    keyStatus(): Promise<AiKeyStatus>
+    setKey(key: string): Promise<AiKeyStatus & { error?: string }>
+    clearKey(): Promise<AiKeyStatus>
+    send(request: TeacherSendRequest): Promise<TeacherSendResult>
+    abort(requestId: string): Promise<void>
+    pickAttachments(): Promise<{ accepted: PendingAttachment[]; rejected: string[] }>
+    readAttachment(file: string): Promise<string | null>
+    onStreamEvent(cb: (event: TeacherStreamEvent) => void): () => void
+  }
+  chats: {
+    get(): Promise<ChatState>
+    set(next: ChatState): Promise<void>
+    clear(): Promise<ChatState>
   }
   system: {
     openExternal(url: string): Promise<void>

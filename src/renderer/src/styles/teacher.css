@@ -1,0 +1,156 @@
+/* Teacher AI panel and button animations. CSS only — the app has no
+   animation library, and `reducedMotion` in tokens.css neutralises all of it. */
+
+@keyframes teacher-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes teacher-pop-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+}
+
+/* Grows out of the button in the bottom-right corner. */
+.teacher-pop-in {
+  transform-origin: bottom right;
+  animation: teacher-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.teacher-pop-out {
+  transform-origin: bottom right;
+  animation: teacher-pop-out 140ms ease-in both;
+  pointer-events: none;
+}
+
+@keyframes teacher-halo {
+  0% {
+    box-shadow:
+      var(--shadow-3),
+      0 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+  70% {
+    box-shadow:
+      var(--shadow-3),
+      0 0 0 12px color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-3),
+      0 0 0 0 color-mix(in oklab, var(--accent) 0%, transparent);
+  }
+}
+
+.teacher-halo {
+  animation: teacher-halo 3s ease-out infinite;
+}
+
+/* Faster pulse while a reply is streaming, so a collapsed panel still shows life. */
+.teacher-halo-active {
+  animation-duration: 1.4s;
+}
+
+/* Cross-fades the mortarboard and the close icon in the same 24px box. */
+.teacher-fab-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+
+.teacher-fab-icon > svg {
+  grid-area: 1 / 1;
+}
+
+.teacher-fab-icon-animated > svg {
+  transition:
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.teacher-fab-icon .teacher-fab-close,
+.teacher-fab-icon[data-open='true'] .teacher-fab-open {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.7);
+}
+
+.teacher-fab-icon .teacher-fab-open,
+.teacher-fab-icon[data-open='true'] .teacher-fab-close {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+/* Pill link to another lesson or test in the course. Styled here rather than in
+   markdown.css because it is generated content, not authored content — but it
+   works anywhere `lesson:` / `test:` links appear. */
+.course-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  padding: 0.05em 0.5em 0.15em;
+  margin: 0 0.05em;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.92em;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: baseline;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.course-pill:hover {
+  background: color-mix(in oklab, var(--accent) 22%, transparent);
+  border-color: var(--accent);
+}
+
+.course-pill svg {
+  align-self: center;
+}
+
+/* Typing indicator shown before the first token arrives. */
+@keyframes teacher-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.teacher-dots > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--text-subtle);
+  animation: teacher-dot 1.2s ease-in-out infinite;
+}
+
+.teacher-dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.teacher-dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}

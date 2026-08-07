@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import {
   Contrast,
   Database,
+  ExternalLink,
   FolderOpen,
   FolderPlus,
+  GraduationCap,
   HardDriveDownload,
   HardDriveUpload,
   Info,
+  ShieldAlert,
   Monitor,
   Moon,
   Package,
@@ -21,16 +24,18 @@ import { Page, PageHeader } from '@/components/Page'
 import { useContent } from '@/stores/content'
 import { useProgress } from '@/stores/progress'
 import { useSettings } from '@/stores/settings'
+import { useTeacher } from '@/stores/teacher'
 import { useUi } from '@/stores/ui'
 import { invalidateSearchIndex } from '@/features/search/useSearchIndex'
 import { Markdown } from '@/markdown/Markdown'
 import { cn, formatBytes, formatDateTime } from '@/lib/utils'
 
-type Tab = 'appearance' | 'reading' | 'content' | 'data' | 'about'
+type Tab = 'appearance' | 'reading' | 'teacher' | 'content' | 'data' | 'about'
 
 const TABS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
   { id: 'reading', label: 'Reading', icon: <Type size={15} /> },
+  { id: 'teacher', label: 'Teacher AI', icon: <GraduationCap size={15} /> },
   { id: 'content', label: 'Content', icon: <Package size={15} /> },
   { id: 'data', label: 'Data', icon: <Database size={15} /> },
   { id: 'about', label: 'About', icon: <Info size={15} /> }
@@ -69,6 +74,7 @@ export function SettingsPage(): React.JSX.Element {
         <div className="min-w-0">
           {tab === 'appearance' && <AppearancePane />}
           {tab === 'reading' && <ReadingPane />}
+          {tab === 'teacher' && <TeacherPane />}
           {tab === 'content' && <ContentPane />}
           {tab === 'data' && <DataPane />}
           {tab === 'about' && <AboutPane />}
@@ -79,6 +85,175 @@ export function SettingsPage(): React.JSX.Element {
 }
 
 /* ---------------------------------------------------------------- shared */
+
+/* --------------------------------------------------------------- teacher */
+
+function TeacherPane(): React.JSX.Element {
+  const settings = useSettings((s) => s.settings)
+  const update = useSettings((s) => s.update)
+  const toast = useUi((s) => s.toast)
+
+  const keyStatus = useTeacher((s) => s.keyStatus)
+  const refreshKeyStatus = useTeacher((s) => s.refreshKeyStatus)
+  const clearAll = useTeacher((s) => s.clearAll)
+  const threadCount = useTeacher((s) => Object.keys(s.state.threads).length)
+
+  const [draftKey, setDraftKey] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function saveKey(): Promise<void> {
+    if (!draftKey.trim()) return
+    setSaving(true)
+    const status = await window.desklearner.ai.setKey(draftKey.trim())
+    setSaving(false)
+    setDraftKey('')
+    await refreshKeyStatus()
+    // A key is only ever added deliberately, so switch the feature on with it.
+    if (status.configured) await update({ aiEnabled: true })
+    if (status.error) toast(status.error, 'error')
+    else toast('API key saved. The Teacher is ready.', 'success')
+  }
+
+  async function removeKey(): Promise<void> {
+    await window.desklearner.ai.clearKey()
+    await refreshKeyStatus()
+    await update({ aiEnabled: false })
+    toast('API key removed.', 'info')
+  }
+
+  return (
+    <>
+      <Group
+        title="Teacher AI"
+        description="An optional tutor that can see the lesson you are reading and answer questions about it."
+      >
+        <div
+          className="flex gap-2.5 rounded-lg border px-3.5 py-3 text-[12.5px] leading-relaxed"
+          style={{ borderColor: 'var(--info)', background: 'var(--info-soft)' }}
+        >
+          <ShieldAlert size={15} className="mt-0.5 shrink-0" style={{ color: 'var(--info)' }} />
+          <div>
+            This is the one part of DeskLearner that uses the internet. When you ask a question, the
+            lesson text, your message and any files you attach are sent to Anthropic&rsquo;s API to
+            generate the answer. Nothing else leaves your machine, and the feature stays off until
+            you add a key.
+          </div>
+        </div>
+
+        <Row
+          label="API key"
+          hint={
+            keyStatus.configured
+              ? `Saved${keyStatus.lastFour ? ` · ends in ${keyStatus.lastFour}` : ''}`
+              : 'Stored encrypted by your operating system, never in plain text'
+          }
+          control={
+            keyStatus.configured ? (
+              <button className="btn btn-danger h-7 text-[12px]" onClick={() => void removeKey()}>
+                <Trash2 size={13} /> Remove
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  className="input h-7 w-56 !py-0 text-[12px]"
+                  placeholder="sk-ant-…"
+                  value={draftKey}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setDraftKey(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void saveKey()
+                  }}
+                />
+                <button
+                  className="btn btn-primary h-7 text-[12px]"
+                  disabled={!draftKey.trim() || saving}
+                  onClick={() => void saveKey()}
+                >
+                  Save
+                </button>
+              </div>
+            )
+          }
+        />
+
+        {!keyStatus.encryptionAvailable && (
+          <p className="text-[11.5px]" style={{ color: 'var(--warning)' }}>
+            This system has no secure credential store, so a key can only be kept for the current
+            session and must be re-entered after a restart.
+          </p>
+        )}
+
+        <Row
+          label="Get an API key"
+          hint="Create one in the Anthropic Console. Usage is billed to your own account."
+          control={
+            <button
+              className="btn h-7 text-[12px]"
+              onClick={() =>
+                void window.desklearner.system.openExternal(
+                  'https://console.anthropic.com/settings/keys'
+                )
+              }
+            >
+              <ExternalLink size={13} /> Open Console
+            </button>
+          }
+        />
+
+        <Row label="Model" hint="Claude Opus 5, with reasoning enabled" control={null} />
+      </Group>
+
+      <Group title="Behaviour">
+        <Row
+          label="Enable the Teacher"
+          hint="Hides the button and panel without removing your key"
+          control={
+            <Toggle
+              checked={settings.aiEnabled}
+              onChange={(v) => void update({ aiEnabled: v })}
+              label="Enable the Teacher"
+            />
+          }
+        />
+        <Row
+          label="Show reasoning"
+          hint="Adds a collapsible summary of how the answer was worked out"
+          control={
+            <Toggle
+              checked={settings.aiShowThinking}
+              onChange={(v) => void update({ aiShowThinking: v })}
+              label="Show reasoning"
+            />
+          }
+        />
+        <Row
+          label="Saved conversations"
+          hint={
+            threadCount === 0
+              ? 'No conversations saved yet'
+              : `${threadCount} conversation${threadCount === 1 ? '' : 's'} stored on this machine`
+          }
+          control={
+            <button
+              className="btn btn-danger h-7 text-[12px]"
+              disabled={threadCount === 0}
+              onClick={() => {
+                if (settings.confirmBeforeReset && !confirm('Delete every saved conversation?')) {
+                  return
+                }
+                void clearAll().then(() => toast('Conversations cleared.', 'success'))
+              }}
+            >
+              <Trash2 size={13} /> Clear all
+            </button>
+          }
+        />
+      </Group>
+    </>
+  )
+}
 
 function Group({
   title,

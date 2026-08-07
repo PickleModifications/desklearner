@@ -1,0 +1,217 @@
+{
+  "id": "test-week-4",
+  "title": "Chapter 4 Test: Azure, Entra ID & Containers",
+  "description": "Sixteen questions on the Azure resource model, the AWS-to-Azure mapping, Entra ID and identity troubleshooting, KQL, and Docker.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 30,
+  "questions": [
+    {
+      "id": "w4-q01",
+      "type": "single",
+      "prompt": "Which Azure concept has no direct AWS equivalent, and what does it give you?",
+      "options": [
+        "Subscription — a billing boundary AWS lacks",
+        "Resource group — a lifecycle container whose deletion removes every resource inside it",
+        "Virtual Network — AWS has no equivalent networking construct",
+        "Managed identity — AWS has nothing comparable"
+      ],
+      "answer": 1,
+      "explanation": "Subscriptions map roughly to AWS accounts, VNets to VPCs, and managed identities to IAM roles for EC2. Resource groups are genuinely new: every resource belongs to exactly one, and `az group delete` removes everything in it — which makes per-day lab groups an excellent habit."
+    },
+    {
+      "id": "w4-q02",
+      "type": "matching",
+      "prompt": "Match each AWS service to its Azure counterpart.",
+      "pairs": [
+        { "left": "S3", "right": "Blob Storage" },
+        { "left": "Lambda", "right": "Azure Functions" },
+        { "left": "DynamoDB", "right": "Cosmos DB" },
+        { "left": "CloudFormation", "right": "ARM templates / Bicep" },
+        { "left": "X-Ray", "right": "Application Insights" }
+      ],
+      "explanation": "The mapping is never exact. Cosmos DB is multi-model with five tunable consistency levels, and Application Insights is a full APM product rather than tracing alone — there is no AWS single-service equivalent to either.",
+      "points": 3
+    },
+    {
+      "id": "w4-q03",
+      "type": "single",
+      "prompt": "You run `az vm stop` at the end of a lab day. What happens to the bill?",
+      "options": [
+        "Compute charges stop immediately",
+        "Compute charges continue, because the VM is stopped but still allocated",
+        "The VM is deleted and all charges stop",
+        "Only storage is billed, at the archive rate"
+      ],
+      "answer": 1,
+      "explanation": "`az vm stop` shuts down the guest OS but keeps the compute allocated and billed. You must use `az vm deallocate`. The portal's Stop button deallocates, which makes the CLI difference easy to miss.",
+      "points": 2
+    },
+    {
+      "id": "w4-q04",
+      "type": "single",
+      "prompt": "An organisation must ensure no resource is created outside UK South, regardless of who creates it — including subscription Owners. Which service enforces this?",
+      "options": [
+        "Azure RBAC, by removing create permissions elsewhere",
+        "Azure Policy, with an allowed-locations policy at the management group",
+        "Resource locks on each resource group",
+        "Conditional Access"
+      ],
+      "answer": 1,
+      "explanation": "RBAC controls who may act, not where resources may exist, and cannot express a location constraint. Azure Policy evaluates resources against rules and denies non-compliant deployments regardless of the caller's role. This Policy-versus-RBAC pair is the most commonly missed distinction on AZ-900.",
+      "points": 2
+    },
+    {
+      "id": "w4-q05",
+      "type": "multi",
+      "prompt": "Which are true of Microsoft Entra ID but **not** of on-premises Active Directory? Select all that apply.",
+      "options": [
+        "It is a flat directory with groups rather than a forest/domain/OU hierarchy",
+        "It uses OAuth 2.0, OIDC and SAML rather than Kerberos and LDAP",
+        "It supports Group Policy",
+        "It is queried through the Microsoft Graph API"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Entra ID is not 'AD in the cloud' — no OUs, no Group Policy, no LDAP, no Kerberos. Device policy in the cloud world is handled by Intune. Most enterprises run both, synchronised with Entra Connect, and the hybrid seam is where many tickets live.",
+      "points": 3
+    },
+    {
+      "id": "w4-q06",
+      "type": "single",
+      "prompt": "A user has the Entra ID **Global Administrator** role. What can they do in Azure by default?",
+      "options": [
+        "Everything, including deleting any subscription's resources",
+        "Nothing with Azure resources — directory roles and Azure RBAC are separate systems",
+        "Only read Azure resources",
+        "Manage resources only in the subscription they created"
+      ],
+      "answer": 1,
+      "explanation": "Entra roles govern the directory — users, groups, apps, licences. Azure RBAC governs resources. A Global Administrator can elevate themselves to User Access Administrator at root scope, but out of the box the two are separate.",
+      "points": 2
+    },
+    {
+      "id": "w4-q07",
+      "type": "single",
+      "prompt": "A user cannot access a SaaS application that worked yesterday. The sign-in log shows error 53003. What does that tell you?",
+      "options": [
+        "Their password is wrong",
+        "Their account is disabled",
+        "A Conditional Access policy blocked the sign-in, and the log entry names which one",
+        "The SAML certificate has expired"
+      ],
+      "answer": 2,
+      "explanation": "53003 is specifically 'access blocked by Conditional Access'. The log entry lists every policy evaluated and its result, so you can identify the exact policy and condition — the most useful screen in the Entra portal."
+    },
+    {
+      "id": "w4-q08",
+      "type": "single",
+      "prompt": "An application that has worked for three years suddenly fails for **every** user at once. Which should you check first?",
+      "options": [
+        "Whether individual users' passwords have expired",
+        "The application's SAML signing certificate expiry",
+        "Whether the users are in the right group",
+        "Network connectivity from each client"
+      ],
+      "answer": 1,
+      "explanation": "Signing certificates typically have a three-year lifetime and expire on a date nobody has in a calendar, locking out every user simultaneously. A two-minute check that resolves a whole-company outage."
+    },
+    {
+      "id": "w4-q09",
+      "type": "boolean",
+      "prompt": "A new Conditional Access policy should be deployed in report-only mode before being enforced.",
+      "answer": true,
+      "explanation": "Report-only evaluates and logs the policy without enforcing it, so you can see exactly who it would have blocked. Deploying straight to enforced is how people lock out their finance department on a Friday — or themselves."
+    },
+    {
+      "id": "w4-q10",
+      "type": "single",
+      "prompt": "Why is blocking legacy authentication the highest-value single Conditional Access policy?",
+      "options": [
+        "Legacy protocols are slower",
+        "Legacy protocols cannot perform MFA, so they let an attacker with a valid password bypass it entirely",
+        "Microsoft charges extra for legacy auth",
+        "It reduces licence costs"
+      ],
+      "answer": 1,
+      "explanation": "IMAP, POP3, SMTP AUTH and older Office clients cannot do MFA. As long as they are enabled, MFA can be bypassed with a password alone. Expect support tickets from old scanners and printers — the answer is usually to move them to modern auth, not to re-enable legacy.",
+      "points": 2
+    },
+    {
+      "id": "w4-q11",
+      "type": "fill-blank",
+      "prompt": "Complete the KQL query fragment.",
+      "text": "requests | where timestamp > ago(1h) | {{0}} count() by {{1}}(timestamp, 5m) | render timechart",
+      "blanks": [
+        ["summarize"],
+        ["bin"]
+      ],
+      "explanation": "summarize is KQL's GROUP BY; bin() buckets a value, almost always time. Filtering on timestamp first matters — Log Analytics partitions by time, so an early time filter is the difference between two seconds and scanning a month of data.",
+      "points": 2
+    },
+    {
+      "id": "w4-q12",
+      "type": "single",
+      "prompt": "In Application Insights, you want to find which database query costs the most **overall**. Which aggregation should you sort by?",
+      "options": [
+        "p95 duration, to find the slowest individual query",
+        "Maximum duration, to find the worst case",
+        "Sum of duration, because total time equals calls multiplied by duration",
+        "Count of calls"
+      ],
+      "answer": 2,
+      "explanation": "A query taking 80 ms called 40,000 times consumes far more total time than one taking 3 seconds called twice. Sorting by summed duration finds where the load actually is — sorting by p95 alone finds the tail, which may be irrelevant.",
+      "points": 2
+    },
+    {
+      "id": "w4-q13",
+      "type": "single",
+      "prompt": "Your Dockerfile copies source code before installing dependencies. What is the practical consequence?",
+      "options": [
+        "The image will be larger",
+        "The application will not start",
+        "Every code change invalidates the dependency layer, so every build reinstalls everything",
+        "Secrets are exposed in the image history"
+      ],
+      "answer": 2,
+      "explanation": "Docker invalidates every layer after a changed one. With code copied first, editing one line forces a full dependency reinstall — a five-second rebuild becomes minutes. Copy the manifest, install, then copy the code.",
+      "points": 2
+    },
+    {
+      "id": "w4-q14",
+      "type": "multi",
+      "prompt": "Which are good practices in a production Dockerfile? Select all that apply.",
+      "options": [
+        "Run as a non-root user",
+        "Use a multi-stage build so build tools stay out of the runtime image",
+        "Use exec-form CMD so the process gets PID 1 and receives SIGTERM",
+        "Bake secrets in with ENV so the container has them at runtime"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Shell-form CMD wraps the process in /bin/sh, which does not forward signals — so the container takes ten seconds to stop. Secrets baked into a layer are retrievable from the image forever, even if a later layer deletes the file.",
+      "points": 3
+    },
+    {
+      "id": "w4-q15",
+      "type": "single",
+      "prompt": "Your container platform restarts the service every 40 seconds during a database outage. What is misconfigured?",
+      "options": [
+        "The readiness probe interval is too short",
+        "The liveness probe checks database connectivity, so the platform kills the container when the database is down",
+        "The image tag is :latest",
+        "The memory limit is too low"
+      ],
+      "answer": 1,
+      "explanation": "Liveness failures cause restarts. If liveness depends on the database, every container is killed while the database is down, adding a crash loop to an existing outage. Dependency checks belong in readiness, which only removes the instance from load balancing.",
+      "points": 2
+    },
+    {
+      "id": "w4-q16",
+      "type": "short",
+      "prompt": "Your container runs but the host gets 'connection refused'. The port mapping is correct. What address is the application most likely bound to instead of 0.0.0.0?",
+      "accepted": ["127.0.0.1", "localhost", "loopback", "127.0.0.1 (localhost)"],
+      "pattern": "127\\.0\\.0\\.1|localhost|loopback",
+      "placeholder": "an IP address",
+      "explanation": "Inside a container, 127.0.0.1 is the container's own loopback — nothing outside can reach it. This is the same mistake as step 6 in the AWS network triage sequence; it recurs at every layer."
+    }
+  ]
+}

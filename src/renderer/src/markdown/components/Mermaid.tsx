@@ -8,11 +8,49 @@ async function loadMermaid(): Promise<typeof import('mermaid').default> {
   return mermaidPromise
 }
 
+/**
+ * Flattens any CSS colour — including `color-mix()` and `oklab()` — to a plain
+ * sRGB `rgb()` string by rasterising a single pixel.
+ *
+ * Mermaid's colour library only understands legacy notations, and
+ * getComputedStyle happily hands back modern ones, so this conversion is what
+ * keeps themed diagrams from failing to render at all.
+ */
+function toRgb(value: string, fallback: string): string {
+  if (!value) return fallback
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 1
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return fallback
+    ctx.clearRect(0, 0, 1, 1)
+    ctx.fillStyle = value
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    return `rgb(${r}, ${g}, ${b})`
+  } catch {
+    return fallback
+  }
+}
+
 /** Reads the current theme tokens so diagrams match the rest of the app. */
 function themeVariables(isDark: boolean): Record<string, string> {
   const css = getComputedStyle(document.documentElement)
-  const v = (name: string): string => css.getPropertyValue(name).trim()
-  return {
+  const probe = document.createElement('span')
+  probe.style.display = 'none'
+  document.body.appendChild(probe)
+
+  const v = (name: string): string => {
+    const raw = css.getPropertyValue(name).trim()
+    if (!raw) return isDark ? '#14171d' : '#ffffff'
+    // Let the browser resolve var()/color-mix(), then flatten to sRGB.
+    probe.style.color = ''
+    probe.style.color = raw
+    const computed = getComputedStyle(probe).color
+    return toRgb(computed || raw, isDark ? '#14171d' : '#ffffff')
+  }
+
+  const variables = {
     background: v('--surface'),
     primaryColor: v('--accent-soft'),
     primaryBorderColor: v('--accent'),
@@ -28,6 +66,9 @@ function themeVariables(isDark: boolean): Record<string, string> {
     fontFamily: css.getPropertyValue('--font-sans').trim() || 'system-ui',
     fontSize: '14px'
   }
+
+  probe.remove()
+  return variables
 }
 
 export function Mermaid({ chart }: { chart: string }): React.JSX.Element {

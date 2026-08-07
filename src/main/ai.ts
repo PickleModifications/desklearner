@@ -1,0 +1,366 @@
+import Anthropic from '@anthropic-ai/sdk'
+import type { BetaContentBlockParam, BetaMessageParam } from '@anthropic-ai/sdk/resources/beta'
+import type { BrowserWindow } from 'electron'
+import { CH } from '@shared/channels'
+import { fenceLanguageFor, isImageMediaType } from '@shared/attachments'
+import type {
+  PendingAttachment,
+  TeacherAttachment,
+  TeacherContext,
+  TeacherMessage,
+  TeacherSendRequest,
+  TeacherStreamEvent
+} from '@shared/types'
+import { readAttachment } from './attachments'
+import { readKey } from './secrets'
+
+const MODEL = 'claude-opus-5'
+const MAX_TOKENS = 16_000
+
+/**
+ * How many of the most recent attachment-bearing user turns get their bytes
+ * re-sent. Older attachments degrade to a text placeholder so a long thread
+ * cannot quietly re-upload megabytes of images on every message.
+ */
+const REHYDRATE_TURNS = 4
+
+let client: Anthropic | null = null
+const inFlight = new Map<string, AbortController>()
+
+export function invalidateClient(): void {
+  client = null
+}
+
+function getClient(): Anthropic | null {
+  if (client) return client
+  const apiKey = readKey()
+  if (!apiKey) return null
+  client = new Anthropic({ apiKey })
+  return client
+}
+
+/* ------------------------------------------------------------------ *
+ * Prompting
+ * ------------------------------------------------------------------ */
+
+const SYSTEM_PROMPT = `You are the Teacher in DeskLearner, a desktop course app. You tutor one learner through the lesson they are currently reading.
+
+Ground every answer in the lesson material provided below. When the lesson covers something, teach it the way the lesson frames it; when the learner asks about something outside the lesson, say so plainly and then answer anyway, briefly.
+
+Think the question through before you answer. Work out what the learner actually misunderstands, not just what they literally typed, and check your explanation against the lesson before you give it.
+
+Explain, don't lecture. Lead with the direct answer in a sentence or two, then the reasoning. Use a concrete example or analogy when a concept is abstract. Keep responses focused and brief — most answers should be a short paragraph or a few bullets, not an essay. Use Markdown, and fenced code blocks for commands and code.
+
+If the learner is wrong about something, say so directly and correct it. If a question can't be answered from the material and you're unsure, say you're unsure rather than guessing.
+
+You are also given the full course outline and which lessons the learner has finished. Use it to place your answer in the course: if something was covered earlier, point them back to that lesson; if it is coming later, say where, and answer at the depth the current lesson needs rather than pre-empting the later one. Take what they have already completed as fair game to build on, and don't assume knowledge from lessons they have not reached yet.
+
+**Whenever you refer to another lesson or test, link it.** Each entry in the outline shows its id in parentheses. Write the link as Markdown using a \`lesson:\` or \`test:\` target — \`[Docker Basics](lesson:day-25)\`, \`[the week 4 test](test:test-week-4)\` — and the app turns it into a button the learner can click. Use the id exactly as the outline gives it; never invent one, and never link to the lesson they already have open. Link on the first mention, not every mention, and only when the other lesson is genuinely where the answer lives.
+
+The learner may attach screenshots, diagrams, PDFs, or files. Read them carefully before answering — if they've shared an error message, a console output, or a config, work from what's actually there rather than what you'd expect to see. If an image is unreadable or ambiguous, say what you can't make out and ask for a clearer one.
+
+Never reveal test answers before the learner has attempted the test.`
+
+/**
+ * The stable half of the prompt. Everything volatile (scroll position, the
+ * current heading) is deliberately left out so this block stays byte-identical
+ * across a thread and keeps its prompt-cache entry.
+ */
+function buildContextBlock(ctx: TeacherContext): string {
+  const lines: string[] = []
+
+  lines.push(`# Course: ${ctx.courseTitle}`)
+  const outline = ctx.outline
+  if (outline) {
+    lines.push('')
+    if (outline.subtitle) lines.push(outline.subtitle)
+    if (outline.description) lines.push('', outline.description)
+    lines.push(
+      '',
+      `Progress: ${outline.lessonsCompleted} of ${outline.lessonsTotal} lessons marked complete.`,
+      '',
+      '## Course outline',
+      '',
+      'Legend: [x] finished · [ ] not yet · ← the lesson currently open.',
+      'The value in parentheses is the id to use when linking, e.g. `[title](lesson:day-12)`.',
+      ''
+    )
+
+    for (const chapter of outline.chapters) {
+      const scored = chapter.testBest === undefined ? 'not attempted' : `best ${chapter.testBest}%`
+      lines.push(`### ${chapter.title}`)
+      for (const lesson of chapter.lessons) {
+        lines.push(
+          `- [${lesson.done ? 'x' : ' '}] (${lesson.id}) ${lesson.title}${lesson.current ? '  ←' : ''}`
+        )
+      }
+      if (chapter.testId) {
+        lines.push(`- (test) (${chapter.testId}) ${chapter.testTitle} — ${scored}`)
+      }
+      lines.push('')
+    }
+  }
+
+  lines.push(ctx.kind === 'lesson' ? '# Current lesson' : '# Test review')
+  lines.push('')
+  if (ctx.chapterTitle) lines.push(`Chapter: ${ctx.chapterTitle}`)
+  lines.push(ctx.kind === 'lesson' ? `Lesson: ${ctx.lessonTitle}` : `Test: ${ctx.lessonTitle}`)
+
+  if (ctx.objectives?.length) {
+    lines.push('', '## Learning objectives', ...ctx.objectives.map((o) => `- ${o}`))
+  }
+
+  if (ctx.keyTerms?.length) {
+    lines.push('', '## Key terms', ...ctx.keyTerms.map((t) => `- **${t.term}** — ${t.definition}`))
+  }
+
+  lines.push('', ctx.kind === 'lesson' ? '## Lesson material' : '## What the learner got wrong')
+  lines.push('', ctx.body)
+
+  return lines.join('\n')
+}
+
+/** Volatile position hints. These ride in the user turn, after the cache breakpoint. */
+function buildPositionNote(ctx: TeacherContext): string | null {
+  if (ctx.kind !== 'lesson') return null
+  const parts: string[] = []
+  if (ctx.currentHeading) parts.push(`reading the section "${ctx.currentHeading}"`)
+  if (typeof ctx.scrollPercent === 'number') {
+    parts.push(`about ${Math.round(ctx.scrollPercent * 100)}% through the lesson`)
+  }
+  if (parts.length === 0) return null
+  return `[The learner is currently ${parts.join(', ')}.]`
+}
+
+/* ------------------------------------------------------------------ *
+ * Content blocks
+ * ------------------------------------------------------------------ */
+
+interface ResolvedAttachment {
+  kind: TeacherAttachment['kind']
+  name: string
+  mediaType: string
+  data: string
+}
+
+function attachmentBlock(item: ResolvedAttachment): BetaContentBlockParam {
+  if (item.kind === 'image' && isImageMediaType(item.mediaType)) {
+    return {
+      type: 'image',
+      source: { type: 'base64', media_type: item.mediaType, data: item.data }
+    }
+  }
+
+  if (item.kind === 'pdf') {
+    return {
+      type: 'document',
+      source: { type: 'base64', media_type: 'application/pdf', data: item.data },
+      title: item.name
+    }
+  }
+
+  // Text files are cheaper and more legible inlined as fenced code than as
+  // document blocks.
+  const text = Buffer.from(item.data, 'base64').toString('utf8')
+  return {
+    type: 'text',
+    text: `Attached file \`${item.name}\`:\n\n\`\`\`${fenceLanguageFor(item.name)}\n${text}\n\`\`\``
+  }
+}
+
+/** Media first, then the question — the model grounds better in that order. */
+function userTurn(text: string, attachments: ResolvedAttachment[]): BetaMessageParam {
+  const content: BetaContentBlockParam[] = attachments.map(attachmentBlock)
+  if (text.trim()) content.push({ type: 'text', text })
+  if (content.length === 0) content.push({ type: 'text', text: '(no message)' })
+  return { role: 'user', content }
+}
+
+function placeholderFor(item: TeacherAttachment): BetaContentBlockParam {
+  return {
+    type: 'text',
+    text: `[${item.kind}: ${item.name} — attached earlier, no longer in context. Ask the learner to re-attach it if you need to look at it again.]`
+  }
+}
+
+async function buildHistory(history: TeacherMessage[]): Promise<BetaMessageParam[]> {
+  // Work out which user turns still get their bytes re-sent.
+  const rehydrate = new Set<string>()
+  for (let i = history.length - 1; i >= 0 && rehydrate.size < REHYDRATE_TURNS; i -= 1) {
+    const message = history[i]
+    if (message.role === 'user' && message.attachments?.length) rehydrate.add(message.id)
+  }
+
+  const messages: BetaMessageParam[] = []
+
+  for (const message of history) {
+    if (message.error) continue
+
+    if (message.role === 'assistant') {
+      if (!message.text.trim()) continue
+      messages.push({ role: 'assistant', content: [{ type: 'text', text: message.text }] })
+      continue
+    }
+
+    const attachments = message.attachments ?? []
+    if (attachments.length === 0) {
+      messages.push(userTurn(message.text, []))
+      continue
+    }
+
+    if (!rehydrate.has(message.id)) {
+      const content: BetaContentBlockParam[] = attachments.map(placeholderFor)
+      if (message.text.trim()) content.push({ type: 'text', text: message.text })
+      messages.push({ role: 'user', content })
+      continue
+    }
+
+    const resolved: ResolvedAttachment[] = []
+    const missing: TeacherAttachment[] = []
+    for (const item of attachments) {
+      const data = await readAttachment(item.file)
+      if (data) resolved.push({ ...item, data })
+      else missing.push(item)
+    }
+
+    const content: BetaContentBlockParam[] = [
+      ...resolved.map(attachmentBlock),
+      ...missing.map(placeholderFor)
+    ]
+    if (message.text.trim()) content.push({ type: 'text', text: message.text })
+    messages.push({ role: 'user', content })
+  }
+
+  return messages
+}
+
+/* ------------------------------------------------------------------ *
+ * Streaming
+ * ------------------------------------------------------------------ */
+
+function describeError(err: unknown): string {
+  if (err instanceof Anthropic.AuthenticationError) {
+    return 'Your API key was rejected. Check it in Settings → Teacher.'
+  }
+  if (err instanceof Anthropic.PermissionDeniedError) {
+    return 'This API key does not have access to Claude Opus 5.'
+  }
+  if (err instanceof Anthropic.RateLimitError) {
+    return 'Rate limited by the API. Wait a moment and try again.'
+  }
+  if (err instanceof Anthropic.APIConnectionError) {
+    return 'Could not reach the Anthropic API. Check your internet connection.'
+  }
+  if (err instanceof Anthropic.BadRequestError) {
+    return `The request was rejected: ${err.message}`
+  }
+  if (err instanceof Anthropic.APIError) {
+    return `The API returned an error (${err.status ?? 'unknown'}). Try again.`
+  }
+  if (err instanceof Error) return err.message
+  return 'Something went wrong talking to the API.'
+}
+
+export function abort(requestId: string): void {
+  inFlight.get(requestId)?.abort()
+  inFlight.delete(requestId)
+}
+
+export function abortAll(): void {
+  for (const controller of inFlight.values()) controller.abort()
+  inFlight.clear()
+}
+
+export async function streamTeacher(
+  win: BrowserWindow,
+  request: TeacherSendRequest,
+  attachments: PendingAttachment[]
+): Promise<void> {
+  const { requestId } = request
+
+  const emit = (event: TeacherStreamEvent): void => {
+    if (!win.isDestroyed()) win.webContents.send(CH.aiStreamEvent, event)
+  }
+
+  const anthropic = getClient()
+  if (!anthropic) {
+    emit({ requestId, type: 'error', message: 'No API key configured.' })
+    return
+  }
+
+  const controller = new AbortController()
+  inFlight.set(requestId, controller)
+
+  try {
+    const history = await buildHistory(request.history)
+    const positionNote = buildPositionNote(request.context)
+    const prompt = positionNote ? `${positionNote}\n\n${request.prompt}` : request.prompt
+
+    const stream = anthropic.beta.messages.stream(
+      {
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        thinking: { type: 'adaptive', display: 'summarized' },
+        output_config: { effort: 'high' },
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: [
+          { type: 'text', text: SYSTEM_PROMPT },
+          {
+            type: 'text',
+            text: buildContextBlock(request.context),
+            // Caches the system prompt and the whole lesson body, so every
+            // follow-up in this thread re-reads it at ~10% of input price.
+            cache_control: { type: 'ephemeral' }
+          }
+        ],
+        messages: [
+          ...history,
+          userTurn(
+            prompt,
+            attachments.map((a) => ({
+              kind: a.kind,
+              name: a.name,
+              mediaType: a.mediaType,
+              data: a.data
+            }))
+          )
+        ]
+      },
+      { signal: controller.signal }
+    )
+
+    for await (const event of stream) {
+      if (event.type !== 'content_block_delta') continue
+      if (event.delta.type === 'text_delta') {
+        emit({ requestId, type: 'text-delta', text: event.delta.text })
+      } else if (event.delta.type === 'thinking_delta') {
+        emit({ requestId, type: 'thinking-delta', text: event.delta.thinking })
+      }
+    }
+
+    const final = await stream.finalMessage()
+
+    // Check the stop reason before trusting `content` — a refusal can arrive
+    // with an empty or partial content array.
+    if (final.stop_reason === 'refusal') {
+      emit({
+        requestId,
+        type: 'error',
+        message:
+          'Claude declined to answer that one. Try rephrasing, or ask about the lesson material directly.'
+      })
+      return
+    }
+
+    emit({ requestId, type: 'done', stopReason: final.stop_reason, model: final.model })
+  } catch (err) {
+    if (controller.signal.aborted) {
+      emit({ requestId, type: 'done', stopReason: 'aborted', model: MODEL })
+      return
+    }
+    emit({ requestId, type: 'error', message: describeError(err) })
+  } finally {
+    inFlight.delete(requestId)
+  }
+}

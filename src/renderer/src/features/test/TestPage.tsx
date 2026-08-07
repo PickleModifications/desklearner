@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   Flag,
+  GraduationCap,
   History,
   Info,
   RotateCcw,
@@ -14,8 +15,11 @@ import {
 import type { AnswerValue, TestAttempt, TestDocument } from '@shared/types'
 import { findCoursePack, useContent } from '@/stores/content'
 import { attemptsFor, useProgress } from '@/stores/progress'
+import { useSettings } from '@/stores/settings'
 import { useUi } from '@/stores/ui'
 import { CourseSidebar } from '@/features/lesson/CourseSidebar'
+import { courseOutline, TEST_REVIEW_OPENER, testReviewContext } from '@/features/teacher/prompts'
+import { threadKeyForTest, useTeacher } from '@/stores/teacher'
 import { QuestionPrompt, QuestionView } from './QuestionView'
 import { gradeTest, isAnswered, maxPoints, TYPE_LABEL, type GradedTest } from './grading'
 import { cn, formatDuration, seededShuffle } from '@/lib/utils'
@@ -40,9 +44,16 @@ export function TestPage(): React.JSX.Element {
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
   const [current, setCurrent] = useState(0)
   const [graded, setGraded] = useState<GradedTest | null>(null)
+  const [lastAttempt, setLastAttempt] = useState<TestAttempt | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const startedAt = useRef<string>('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const teacherConfigured = useTeacher((s) => s.keyStatus.configured)
+  const teacherEnabled = useSettings((s) => s.settings.aiEnabled)
+  const openTeacherFor = useTeacher((s) => s.openFor)
+  const setTeacherContext = useTeacher((s) => s.setContext)
+  const setTeacherOpen = useUi((s) => s.setTeacherOpen)
 
   const history = attemptsFor(progress, courseId, testId)
 
@@ -119,10 +130,37 @@ export function TestPage(): React.JSX.Element {
     }
     recordAttempt(attempt)
     setGraded(result)
+    setLastAttempt(attempt)
     setPhase('results')
     scrollRef.current?.scrollTo({ top: 0 })
     if (auto) toast('Time is up — your answers were submitted.', 'info')
-    else toast(result.passed ? `Passed with ${Math.round(result.percent)}%` : `Scored ${Math.round(result.percent)}% — keep going`, result.passed ? 'success' : 'info')
+    else
+      toast(
+        result.passed
+          ? `Passed with ${Math.round(result.percent)}%`
+          : `Scored ${Math.round(result.percent)}% — keep going`,
+        result.passed ? 'success' : 'info'
+      )
+  }
+
+  /**
+   * Opens the Teacher on this test's own thread, seeded with the questions the
+   * learner missed. This is the only Teacher entry point on a test page — there
+   * is deliberately no floating button while a test is in progress.
+   */
+  const explainMistakes = (): void => {
+    if (!test || !lastAttempt) return
+    openTeacherFor(threadKeyForTest(courseId, testId), test.title, TEST_REVIEW_OPENER)
+    setTeacherContext(
+      testReviewContext(
+        test,
+        lastAttempt,
+        courseId,
+        pack?.manifest.title ?? '',
+        pack ? courseOutline(pack, progress) : undefined
+      )
+    )
+    setTeacherOpen(true)
   }
 
   const setAnswer = (id: string, value: AnswerValue): void =>
@@ -140,7 +178,10 @@ export function TestPage(): React.JSX.Element {
   if (!pack) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-ink-subtle">
-        Course not found. <Link to="/library" className="ml-2 underline">Library</Link>
+        Course not found.{' '}
+        <Link to="/library" className="ml-2 underline">
+          Library
+        </Link>
       </div>
     )
   }
@@ -264,6 +305,8 @@ export function TestPage(): React.JSX.Element {
               seed={seed}
               onRetake={start}
               onBack={() => navigate(`/course/${courseId}`)}
+              onExplain={explainMistakes}
+              canExplain={teacherConfigured && teacherEnabled}
               courseId={courseId}
               testId={testId}
             />
@@ -307,7 +350,9 @@ function TestIntro({
         <div className="min-w-0 flex-1">
           <h1 className="text-[22px] font-semibold tracking-tight">{test.title}</h1>
           {test.description && (
-            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">{test.description}</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">
+              {test.description}
+            </p>
           )}
         </div>
       </div>
@@ -363,7 +408,10 @@ function TestIntro({
 
 function Fact({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
-    <div className="rounded-lg border border-line px-3 py-2.5" style={{ background: 'var(--surface-2)' }}>
+    <div
+      className="rounded-lg border border-line px-3 py-2.5"
+      style={{ background: 'var(--surface-2)' }}
+    >
       <dt className="text-[10.5px] uppercase tracking-wide text-ink-subtle">{label}</dt>
       <dd className="mt-0.5 text-[15px] font-semibold tabular-nums">{value}</dd>
     </div>
@@ -471,6 +519,8 @@ function TestResults({
   seed,
   onRetake,
   onBack,
+  onExplain,
+  canExplain,
   courseId,
   testId
 }: {
@@ -482,6 +532,8 @@ function TestResults({
   seed: string
   onRetake: () => void
   onBack: () => void
+  onExplain: () => void
+  canExplain: boolean
   courseId: string
   testId: string
 }): React.JSX.Element {
@@ -515,6 +567,11 @@ function TestResults({
           <button className="btn btn-primary" onClick={onRetake}>
             <RotateCcw size={14} /> Retake
           </button>
+          {canExplain && wrong > 0 && (
+            <button className="btn" onClick={onExplain}>
+              <GraduationCap size={14} /> Explain my mistakes
+            </button>
+          )}
           <Link to={`/course/${courseId}/test/${testId}/history`} className="btn">
             <History size={14} /> Attempt history
           </Link>

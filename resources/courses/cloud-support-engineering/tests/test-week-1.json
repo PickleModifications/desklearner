@@ -1,0 +1,202 @@
+{
+  "id": "test-week-1",
+  "title": "Chapter 1 Test: SQL Server & Git",
+  "description": "Sixteen questions covering T-SQL fundamentals, joins, aggregation, indexes, execution plans and Git workflows. Aim for 75%. Every question has an explanation in review mode.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 30,
+  "questions": [
+    {
+      "id": "w1-q01",
+      "type": "single",
+      "prompt": "Which T-SQL statement returns the ten most recent orders **deterministically**?",
+      "options": [
+        "SELECT * FROM Sales.SalesOrderHeader LIMIT 10",
+        "SELECT TOP (10) * FROM Sales.SalesOrderHeader",
+        "SELECT TOP (10) * FROM Sales.SalesOrderHeader ORDER BY OrderDate DESC",
+        "SELECT * FROM Sales.SalesOrderHeader ORDER BY OrderDate DESC LIMIT 10"
+      ],
+      "answer": 2,
+      "explanation": "LIMIT is not valid T-SQL — that is MySQL/PostgreSQL syntax. TOP without ORDER BY returns an arbitrary set of rows that can change when an index changes. Only TOP combined with ORDER BY is both valid and deterministic."
+    },
+    {
+      "id": "w1-q02",
+      "type": "single",
+      "prompt": "A `LEFT JOIN` from Customers to Orders is followed by `WHERE o.OrderDate >= '2013-01-01'`. What is the effect?",
+      "options": [
+        "Customers with no orders still appear, with NULL order columns",
+        "The LEFT JOIN behaves as an INNER JOIN, because NULL >= a date is unknown",
+        "The query returns an error",
+        "Only customers whose first order was in 2013 appear"
+      ],
+      "answer": 1,
+      "explanation": "The WHERE clause runs after the join. For a customer with no orders, o.OrderDate is NULL, and NULL >= '2013-01-01' evaluates to unknown rather than true, so the row is filtered out. Move the condition into the ON clause to preserve the outer join.",
+      "points": 2
+    },
+    {
+      "id": "w1-q03",
+      "type": "multi",
+      "prompt": "Which of the following are true of `COUNT(*)` versus `COUNT(column)`? Select all that apply.",
+      "options": [
+        "COUNT(*) counts every row",
+        "COUNT(column) skips rows where the column is NULL",
+        "COUNT(*) - COUNT(column) gives the number of NULLs in that column",
+        "COUNT(column) is always faster than COUNT(*)"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "COUNT(*) counts rows; COUNT(column) counts non-NULL values, so the difference is exactly the NULL count — a useful one-line data-quality check. There is no general performance guarantee either way; COUNT(*) can often use a narrow index and be the faster option.",
+      "points": 2
+    },
+    {
+      "id": "w1-q04",
+      "type": "boolean",
+      "prompt": "`WHERE ShipDate = NULL` returns all rows where ShipDate has no value.",
+      "answer": false,
+      "explanation": "It returns zero rows, always. NULL compared to anything — including NULL — evaluates to unknown, not true. Use IS NULL. This bug is silent, which is what makes it dangerous."
+    },
+    {
+      "id": "w1-q05",
+      "type": "single",
+      "prompt": "You want customers whose 2013 spend exceeds £10,000. Where do the two conditions belong?",
+      "options": [
+        "Both in WHERE",
+        "Both in HAVING",
+        "OrderDate in WHERE, total spend in HAVING",
+        "OrderDate in HAVING, total spend in WHERE"
+      ],
+      "answer": 2,
+      "explanation": "OrderDate is a property of an individual row, so it filters before grouping in WHERE — which is also faster, since it reduces the volume being grouped. Total spend is an aggregate that only exists after GROUP BY, so it must be filtered in HAVING."
+    },
+    {
+      "id": "w1-q06",
+      "type": "ordering",
+      "prompt": "Put the SQL logical processing phases into the order the engine evaluates them.",
+      "items": ["SELECT", "FROM / JOIN", "ORDER BY", "WHERE", "GROUP BY", "HAVING"],
+      "answer": ["FROM / JOIN", "WHERE", "GROUP BY", "HAVING", "SELECT", "ORDER BY"],
+      "explanation": "FROM builds the row set, WHERE filters rows, GROUP BY collapses them, HAVING filters groups, SELECT computes output columns, ORDER BY sorts. This order explains why a SELECT alias cannot be used in WHERE but can be used in ORDER BY.",
+      "points": 3
+    },
+    {
+      "id": "w1-q07",
+      "type": "single",
+      "prompt": "Why is `NOT IN (SELECT CustomerId FROM Orders)` dangerous when `Orders.CustomerId` is nullable?",
+      "options": [
+        "It is slower than NOT EXISTS",
+        "If any row in the subquery is NULL, the whole predicate is unknown and the query returns zero rows",
+        "SQL Server raises an error on NULL in a NOT IN subquery",
+        "It silently converts to an INNER JOIN"
+      ],
+      "answer": 1,
+      "explanation": "A single NULL in the subquery makes NOT IN evaluate to unknown for every outer row, so the query returns an empty set that looks like a legitimate 'no such records' answer. Prefer NOT EXISTS, which handles NULLs correctly.",
+      "points": 2
+    },
+    {
+      "id": "w1-q08",
+      "type": "short",
+      "prompt": "What single-word term describes a predicate the engine can satisfy with an index **seek** rather than a scan?",
+      "accepted": ["SARGable", "sargable", "SARG-able", "sargability"],
+      "pattern": "^sarg",
+      "placeholder": "one word",
+      "explanation": "SARGable — 'Search ARGument able'. Wrapping a column in a function, or forcing an implicit type conversion, destroys SARGability and turns a seek into a scan."
+    },
+    {
+      "id": "w1-q09",
+      "type": "single",
+      "prompt": "Which predicate is **not** SARGable?",
+      "options": [
+        "WHERE OrderDate >= '2013-01-01' AND OrderDate < '2014-01-01'",
+        "WHERE YEAR(OrderDate) = 2013",
+        "WHERE AccountNumber LIKE 'AW0%'",
+        "WHERE CustomerId = 29825"
+      ],
+      "answer": 1,
+      "explanation": "Wrapping the column in YEAR() means the engine must compute the function for every row before comparing, so the index's sort order is useless. The range version returns the same rows and can seek. Both are correct; only one is fast on a large table."
+    },
+    {
+      "id": "w1-q10",
+      "type": "multi",
+      "prompt": "Which are true of a clustered index in SQL Server? Select all that apply.",
+      "options": [
+        "There can be only one per table",
+        "Its leaf level contains the actual row data",
+        "A table can have up to 999 of them",
+        "It determines the physical ordering of rows"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "A clustered index IS the table, sorted by its key, so there can only be one — a table can be physically ordered only one way. The 999 limit applies to non-clustered indexes.",
+      "points": 2
+    },
+    {
+      "id": "w1-q11",
+      "type": "single",
+      "prompt": "An index exists on the filtered column, but the execution plan still shows a scan. Which is the **least** likely explanation?",
+      "options": [
+        "The predicate is non-SARGable",
+        "The predicate matches 40% of the table, so a scan is genuinely cheaper",
+        "Too many key lookups would be required, so the optimiser rejected the index",
+        "The table has no primary key"
+      ],
+      "answer": 3,
+      "explanation": "The absence of a primary key does not prevent a non-clustered index from being used. The other three are the standard causes, along with stale statistics and a leading-column mismatch in a composite index."
+    },
+    {
+      "id": "w1-q12",
+      "type": "fill-blank",
+      "prompt": "Complete the window function that numbers rows restarting per customer, most recent first.",
+      "text": "ROW_NUMBER() OVER ({{0}} BY CustomerId {{1}} BY OrderDate DESC) AS rn",
+      "blanks": [
+        ["PARTITION"],
+        ["ORDER"]
+      ],
+      "explanation": "PARTITION BY restarts the numbering for each customer; ORDER BY inside OVER decides what 'first' means. Filtering on rn <= 3 in an outer query is the standard top-N-per-group pattern.",
+      "points": 2
+    },
+    {
+      "id": "w1-q13",
+      "type": "single",
+      "prompt": "What is the golden rule of rebasing?",
+      "options": [
+        "Never rebase more than five commits at once",
+        "Never rebase a branch other people have based work on",
+        "Always rebase before every commit",
+        "Never rebase onto main"
+      ],
+      "answer": 1,
+      "explanation": "Rebasing rewrites commits with new hashes. Doing that to a shared branch forces everyone who has pulled it into manual recovery. Rebasing your own unpushed feature branch is routine and good practice."
+    },
+    {
+      "id": "w1-q14",
+      "type": "single",
+      "prompt": "A regression appeared somewhere in the last 512 commits. Roughly how many commits will `git bisect` ask you to test?",
+      "options": ["About 512", "About 256", "About 9", "About 2"],
+      "answer": 2,
+      "explanation": "Bisect performs a binary search, so it needs roughly log₂(512) = 9 tests. This is also the strongest argument for squash-merging PRs — every commit on main being buildable makes every bisect step testable."
+    },
+    {
+      "id": "w1-q15",
+      "type": "matching",
+      "prompt": "Match each Git command to what it is for.",
+      "pairs": [
+        { "left": "git revert", "right": "Undo a commit that is already public, by adding an inverse commit" },
+        { "left": "git reflog", "right": "Find a commit that is no longer reachable from any branch" },
+        { "left": "git cherry-pick -x", "right": "Apply one commit's diff to another branch, recording its origin" },
+        { "left": "git log -S", "right": "Find when a specific string entered or left the codebase" }
+      ],
+      "explanation": "revert is the safe undo for pushed work; reset --hard is only for local commits. The reflog is the safety net behind almost every Git recovery. The -x flag on cherry-pick is essential when backporting between long-lived branches.",
+      "points": 3
+    },
+    {
+      "id": "w1-q16",
+      "type": "single",
+      "prompt": "On a solo repository you enable 'Require a pull request before merging' and 'Require 1 approval'. What happens?",
+      "options": [
+        "Nothing changes; you can still merge your own PRs",
+        "You are locked out of merging, because GitHub does not allow self-approval",
+        "GitHub auto-approves after 24 hours",
+        "Branch protection only applies to other contributors"
+      ],
+      "answer": 1,
+      "explanation": "GitHub will not let you approve your own pull request, so a one-approval requirement on a solo repository blocks every merge. Require the PR and conversation resolution; add the approval requirement when a second person joins."
+    }
+  ]
+}

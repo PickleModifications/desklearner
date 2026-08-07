@@ -32,6 +32,19 @@ export const CH = {
   winIsMaximized: 'win:is-maximized',
   winMaximizeChanged: 'win:maximize-changed',
 
+  aiKeyStatus: 'ai:key-status',
+  aiKeySet: 'ai:key-set',
+  aiKeyClear: 'ai:key-clear',
+  aiSend: 'ai:send',
+  aiAbort: 'ai:abort',
+  aiStreamEvent: 'ai:stream-event',
+  aiPickAttachments: 'ai:pick-attachments',
+  aiReadAttachment: 'ai:read-attachment',
+
+  chatsGet: 'chats:get',
+  chatsSet: 'chats:set',
+  chatsClear: 'chats:clear',
+
   openExternal: 'sys:open-external',
   setThemeSource: 'sys:set-theme-source',
   nativeThemeChanged: 'sys:native-theme-changed'

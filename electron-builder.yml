@@ -20,20 +20,29 @@ extraResources:
 asar: true
 
 win:
+  icon: build/icon.ico
   target:
     - target: nsis
       arch: [x64]
     - target: portable
       arch: [x64]
-  artifactName: ${productName}-${version}-${arch}.${ext}
 
+# Both Windows targets emit an .exe, so they need distinct names or the second
+# silently overwrites the first.
 nsis:
+  artifactName: ${productName}-${version}-Setup-${arch}.${ext}
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DeskLearner
+
+portable:
+  artifactName: ${productName}-${version}-Portable-${arch}.${ext}
 
 mac:
   target: [dmg]

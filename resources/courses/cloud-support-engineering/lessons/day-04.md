@@ -20,7 +20,7 @@ keyTerms:
   - term: Index scan
     definition: The engine reading the whole index or table. Cost grows with table size — fine for small tables, ruinous for large ones.
   - term: SARGable
-    definition: "Search ARGument able" — a predicate the engine can satisfy with an index seek. Wrapping a column in a function usually destroys SARGability.
+    definition: Short for Search ARGument able — a predicate the engine can satisfy with an index seek. Wrapping a column in a function usually destroys SARGability.
 resources:
   - label: Microsoft Learn — Clustered and nonclustered indexes
     url: https://learn.microsoft.com/en-us/sql/relational-databases/indexes/clustered-and-nonclustered-indexes-described

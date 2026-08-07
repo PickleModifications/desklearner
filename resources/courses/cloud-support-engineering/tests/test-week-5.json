@@ -1,0 +1,198 @@
+{
+  "id": "test-week-5",
+  "title": "Chapter 5 Test: Project & Interview Readiness",
+  "description": "Fourteen questions on the design decisions behind the ticket ingestion project, safe deployment practice, and interview technique.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 25,
+  "questions": [
+    {
+      "id": "w5-q01",
+      "type": "single",
+      "prompt": "Why enforce ticket idempotency with a UNIQUE constraint rather than an application-level 'check then insert'?",
+      "options": [
+        "It is faster to write in code",
+        "The database enforces it atomically, so two concurrent requests cannot both pass the check and insert",
+        "UNIQUE constraints create a clustered index automatically",
+        "It removes the need for a primary key"
+      ],
+      "answer": 1,
+      "explanation": "Check-then-insert has a race window: two concurrent requests can both find no existing row and both insert. A UNIQUE constraint is enforced atomically by the engine, so the second insert fails deterministically and the application translates that into an idempotent 200.",
+      "points": 2
+    },
+    {
+      "id": "w5-q02",
+      "type": "single",
+      "prompt": "Why prefer `INSERT` with a catch on error 2627 over `MERGE` for a simple upsert in SQL Server?",
+      "options": [
+        "MERGE is not supported in Azure SQL",
+        "MERGE has documented concurrency caveats and needs lock hints to be race-free",
+        "MERGE cannot insert rows",
+        "INSERT is the only statement that can be parameterised"
+      ],
+      "answer": 1,
+      "explanation": "MERGE has a long history of subtle issues, including race conditions without HOLDLOCK. Insert-and-catch-2627 is atomic, race-free and needs no lock hints. Knowing *why* you avoided MERGE is a genuinely strong T-SQL interview answer."
+    },
+    {
+      "id": "w5-q03",
+      "type": "single",
+      "prompt": "Your ingest endpoint returns 503 with the message 'Retry with the same ticketId'. Why is that advice safe?",
+      "options": [
+        "503 responses are automatically retried by HTTP clients",
+        "The endpoint is idempotent, so a retry cannot create a duplicate",
+        "The payload was already written to the rejection store",
+        "The database rolls back on connection loss"
+      ],
+      "answer": 1,
+      "explanation": "Advising a retry is only responsible when retrying is harmless. The UNIQUE constraint guarantees a second successful attempt either creates the row (if the first never landed) or reports it already exists — never two rows."
+    },
+    {
+      "id": "w5-q04",
+      "type": "multi",
+      "prompt": "Which are good reasons to store the original request payload verbatim alongside the parsed ticket? Select all that apply.",
+      "options": [
+        "It settles disputes about what the customer actually sent",
+        "It lets you replay ingestion after a schema or mapping fix",
+        "It is required by JSON Schema",
+        "It gives you the real distribution of field values before you tighten a contract"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Disk is cheap; arguments about what was sent are expensive. The third option — querying stored payloads to see what values callers actually use — is exactly what prevents a schema narrowing from breaking someone.",
+      "points": 2
+    },
+    {
+      "id": "w5-q05",
+      "type": "single",
+      "prompt": "Why should database migrations run as a separate pre-deploy job rather than at application startup?",
+      "options": [
+        "Startup is too slow to run migrations",
+        "A failed migration stops the pipeline with the old version still serving, and multiple replicas starting at once would race",
+        "Migrations need a different language",
+        "Container platforms forbid DDL from application containers"
+      ],
+      "answer": 1,
+      "explanation": "Two reasons, both decisive. A separate job gives a clean failure point with no broken deployment. And with several replicas starting simultaneously, startup migrations race each other against the same schema.",
+      "points": 2
+    },
+    {
+      "id": "w5-q06",
+      "type": "multi",
+      "prompt": "Which schema migrations are safe to run while the previous application version is still serving traffic? Select all that apply.",
+      "options": [
+        "Add a nullable column",
+        "Add an index",
+        "Rename a column",
+        "Widen VARCHAR(50) to VARCHAR(200)"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "During a rolling deploy both versions run against the same schema. Renaming a column breaks the version that still reads the old name — use add, dual-write, migrate reads, then drop in a later release.",
+      "points": 2
+    },
+    {
+      "id": "w5-q07",
+      "type": "single",
+      "prompt": "Why give the application's database identity only `db_datareader` and `db_datawriter` rather than `db_owner`?",
+      "options": [
+        "db_owner is slower",
+        "Least privilege — the running service can read and write rows but cannot drop a table; migrations run under a separate identity",
+        "Azure SQL does not support db_owner",
+        "db_datawriter is required for parameterised queries"
+      ],
+      "answer": 1,
+      "explanation": "Separating the runtime identity from the DDL identity means a compromised or buggy application cannot destroy the schema. It is real least privilege applied to a database, and it is the kind of detail that distinguishes a portfolio project from a tutorial."
+    },
+    {
+      "id": "w5-q08",
+      "type": "single",
+      "prompt": "Your deployment smoke test only checks that `/health` returns 200. What can it miss?",
+      "options": [
+        "Nothing — /health is a complete check",
+        "Everything downstream: the database could be unreachable, the schema missing, or validation broken, and the process would still report healthy",
+        "Only TLS certificate problems",
+        "Only performance regressions"
+      ],
+      "answer": 1,
+      "explanation": "A liveness endpoint deliberately checks nothing external. A useful smoke test exercises the real path — ingest a ticket twice and assert 201 then 200, which verifies the connection, schema, validator and idempotency in one step.",
+      "points": 2
+    },
+    {
+      "id": "w5-q09",
+      "type": "single",
+      "prompt": "Which addition to a portfolio README most improves how an interviewer reads the project?",
+      "options": [
+        "A longer list of technologies",
+        "A table of design decisions with reasoning and links to ADRs",
+        "More detailed installation instructions",
+        "Test coverage badges"
+      ],
+      "answer": 1,
+      "explanation": "Technology lists and install steps are table stakes; badges are decoration. A decisions table demonstrates judgement and trade-off reasoning — hard to fake, hard to assess from code alone, and it hands the interviewer six questions you can answer well."
+    },
+    {
+      "id": "w5-q10",
+      "type": "single",
+      "prompt": "In a scenario question about diagnosing an outage, what most distinguishes a strong answer?",
+      "options": [
+        "Naming the correct root cause quickly",
+        "Establishing blast radius early and mitigating before fully diagnosing",
+        "Listing every possible cause exhaustively",
+        "Naming the specific tooling you would use"
+      ],
+      "answer": 1,
+      "explanation": "The interviewer assesses method, not whether you guess their intended answer. Checking how many customers are affected determines urgency and escalation, and restoring service before completing the diagnosis is the judgement call that separates people who have handled real incidents from those who have not.",
+      "points": 2
+    },
+    {
+      "id": "w5-q11",
+      "type": "ordering",
+      "prompt": "Put the universal diagnostic framework steps in order.",
+      "items": [
+        "Diagnose the cause",
+        "Clarify what is failing and since when",
+        "Mitigate — restore service",
+        "Establish blast radius",
+        "Correlate with recent change",
+        "Prevent — write the action item"
+      ],
+      "answer": [
+        "Clarify what is failing and since when",
+        "Establish blast radius",
+        "Correlate with recent change",
+        "Mitigate — restore service",
+        "Diagnose the cause",
+        "Prevent — write the action item"
+      ],
+      "explanation": "Two orderings matter most: blast radius before debugging, because it decides whether this is a ticket or an incident; and mitigate before diagnose, because the evidence will still be in the logs tomorrow but the customers are failing now.",
+      "points": 3
+    },
+    {
+      "id": "w5-q12",
+      "type": "single",
+      "prompt": "In a STAR answer, which section should take the most time?",
+      "options": ["Situation", "Task", "Action", "Result"],
+      "answer": 2,
+      "explanation": "Roughly 15% Situation, 10% Task, 60% Action, 15% Result. The commonest failure is forty seconds of context and eight seconds on what you actually did — which is the only part that tells them anything about you."
+    },
+    {
+      "id": "w5-q13",
+      "type": "single",
+      "prompt": "An interviewer asks about a technology you listed but have used only briefly. Best response?",
+      "options": [
+        "Describe it in general terms and hope the questions stay shallow",
+        "Say plainly what you have and have not done with it, then describe the closest thing you did properly",
+        "Change the subject to something you know well",
+        "Say you should not have listed it"
+      ],
+      "answer": 1,
+      "explanation": "Calibrated honesty is a positive signal — they are assessing whether they can trust your self-assessment on call. Pivoting to adjacent work you did do keeps the answer substantive rather than merely apologetic.",
+      "points": 2
+    },
+    {
+      "id": "w5-q14",
+      "type": "boolean",
+      "prompt": "A post-mortem action item of 'be more careful when changing schemas' is an adequate outcome.",
+      "answer": false,
+      "explanation": "Individual vigilance does not scale and does not survive a bad night. The useful action item is systemic — a CI check that fails a schema narrowing, or a dashboard of the enum values callers actually send. 'The action item was not be more careful' is a line that lands well in an interview."
+    }
+  ]
+}

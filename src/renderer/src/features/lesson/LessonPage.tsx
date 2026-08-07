@@ -23,6 +23,8 @@ import { Markdown } from '@/markdown/Markdown'
 import { CourseSidebar } from './CourseSidebar'
 import { NotesDrawer } from './NotesDrawer'
 import { TableOfContents, useHeadings } from './TableOfContents'
+import { SelectionAsk } from '@/features/teacher/SelectionAsk'
+import { useLessonTeacherContext } from '@/features/teacher/useLessonTeacherContext'
 import { cn } from '@/lib/utils'
 
 export function LessonPage(): React.JSX.Element {
@@ -127,6 +129,17 @@ export function LessonPage(): React.JSX.Element {
   const chapterTest = chapter?.test
   const isLastInChapter = chapter ? chapter.lessons.at(-1)?.id === lessonId : false
 
+  // Keep the Teacher's context — course outline plus current position — in step
+  // with what is on screen.
+  useLessonTeacherContext({
+    pack,
+    doc,
+    chapterTitle: chapter?.title ?? '',
+    lessonTitle: doc?.frontmatter.title ?? lessonId,
+    scrollEl,
+    headings
+  })
+
   const onTaskChange = useCallback(
     (taskKey: string, value: boolean) =>
       setChecklistItem(courseId, chapterId, lessonId, taskKey, value),
@@ -223,6 +236,8 @@ export function LessonPage(): React.JSX.Element {
             {done ? 'Completed' : 'Mark complete'}
           </button>
         </header>
+
+        <SelectionAsk container={articleEl} />
 
         <div className="flex min-h-0 flex-1">
           <div ref={setScrollEl} className="scroll-area min-w-0 flex-1">

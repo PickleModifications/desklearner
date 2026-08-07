@@ -1,0 +1,205 @@
+{
+  "id": "test-week-2",
+  "title": "Chapter 2 Test: Python, JSON Schema & AWS",
+  "description": "Sixteen questions on support-flavoured Python, JSON Schema as a contract, and the AWS fundamentals — service models, networking, IAM, compute and storage.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 30,
+  "questions": [
+    {
+      "id": "w2-q01",
+      "type": "single",
+      "prompt": "Why does a support script iterate a log file line by line rather than calling `readlines()`?",
+      "options": [
+        "readlines() is deprecated in Python 3",
+        "Iterating is the only way to handle encoding errors",
+        "readlines() loads the entire file into memory, which fails on multi-gigabyte production logs",
+        "Iterating automatically parses JSON"
+      ],
+      "answer": 2,
+      "explanation": "Iterating a file object is a generator — memory stays flat regardless of file size. readlines() materialises every line as a list, which is fine for a 2 MB test file and fatal for a 4 GB production log."
+    },
+    {
+      "id": "w2-q02",
+      "type": "single",
+      "prompt": "What is the single most important argument to pass to every `requests` call in a diagnostic script?",
+      "options": ["verify=", "timeout=", "stream=", "allow_redirects="],
+      "answer": 1,
+      "explanation": "requests has no default timeout. A call to a hung service blocks forever, and your quick diagnostic script becomes the thing somebody has to kill. This is the most common bug in scripts written by people who are otherwise good at Python."
+    },
+    {
+      "id": "w2-q03",
+      "type": "multi",
+      "prompt": "Which HTTP responses are generally worth retrying with backoff? Select all that apply.",
+      "options": ["429 Too Many Requests", "404 Not Found", "503 Service Unavailable", "400 Bad Request"],
+      "answer": [0, 2],
+      "explanation": "429 and 5xx are transient — honour Retry-After on a 429. A 404 will still be a 404 on the fourth attempt, and a 400 means your payload is wrong; retrying either wastes time and pollutes the logs.",
+      "points": 2
+    },
+    {
+      "id": "w2-q04",
+      "type": "boolean",
+      "prompt": "A JSON Schema is the right place to check that the customer referenced by `customerId` actually exists.",
+      "answer": false,
+      "explanation": "Schema validation checks structure and shape — types, required fields, formats, enums. Whether a referenced entity exists is a business rule, validated after the schema passes. Keeping the layers distinct is what lets you return 400 for a malformed payload and 422 for a well-formed but unprocessable one."
+    },
+    {
+      "id": "w2-q05",
+      "type": "single",
+      "prompt": "A customer's payload has four separate problems. Why should the API report all four rather than stopping at the first?",
+      "options": [
+        "It is faster for the server",
+        "It avoids four fix-and-resubmit round trips, each of which can become a support contact",
+        "The JSON Schema specification requires it",
+        "Reporting one error is a security risk"
+      ],
+      "answer": 1,
+      "explanation": "validate() raises on the first error; iter_errors() returns all of them. The difference is a caller who fixes everything once versus a slow guess-and-retry loop that generates support tickets."
+    },
+    {
+      "id": "w2-q06",
+      "type": "multi",
+      "prompt": "Which JSON Schema changes are **breaking** for existing callers? Select all that apply.",
+      "options": [
+        "Adding a new optional property",
+        "Adding a new required property",
+        "Narrowing an enum from five values to three",
+        "Widening maxLength from 100 to 200"
+      ],
+      "answer": [1, 2],
+      "explanation": "Adding an optional property and relaxing a constraint are both safe. Adding a required property immediately invalidates every existing payload, and narrowing an enum rejects values that were previously accepted — the exact scenario from Day 21's incident.",
+      "points": 2
+    },
+    {
+      "id": "w2-q07",
+      "type": "single",
+      "prompt": "A customer reports an Azure Function timing out. Under the service model, where does your investigation start?",
+      "options": [
+        "The physical data centre hardware",
+        "The host operating system and its patch level",
+        "The application code, its downstream calls, and the configured timeout and memory",
+        "The hypervisor"
+      ],
+      "answer": 2,
+      "explanation": "Functions are PaaS — the provider owns everything from the OS down. Your investigation begins at your code and your configuration, and because you usually cannot get a shell, logging and metrics are your only diagnostic surface."
+    },
+    {
+      "id": "w2-q08",
+      "type": "matching",
+      "prompt": "Match each AWS concept to its description.",
+      "pairs": [
+        { "left": "Region", "right": "A geographic area containing multiple isolated data centres" },
+        { "left": "Availability Zone", "right": "One or more data centres with independent power and cooling, milliseconds apart" },
+        { "left": "Edge location", "right": "A CDN point of presence serving cached content close to users" },
+        { "left": "RPO", "right": "How much data you can afford to lose, measured in time" }
+      ],
+      "explanation": "Deploying across two AZs is the cheapest resilience improvement available. RPO (how much data) and RTO (how long to recover) are the two numbers that determine whether restoring from last night's backup is acceptable.",
+      "points": 3
+    },
+    {
+      "id": "w2-q09",
+      "type": "single",
+      "prompt": "What makes a subnet 'public' in AWS?",
+      "options": [
+        "A checkbox in the subnet settings",
+        "Its route table has a 0.0.0.0/0 route pointing at an internet gateway",
+        "Instances in it have public IP addresses",
+        "Its security group allows inbound traffic from 0.0.0.0/0"
+      ],
+      "answer": 1,
+      "explanation": "That route is the entire definition. An instance also needs a public IP to be reachable from outside, but the route is what makes the subnet public. This is the most common answer to 'why can't my instance reach the internet?'",
+      "points": 2
+    },
+    {
+      "id": "w2-q10",
+      "type": "multi",
+      "prompt": "Which are true of security groups but **not** network ACLs? Select all that apply.",
+      "options": [
+        "They are stateful — return traffic is automatic",
+        "They support both allow and deny rules",
+        "They attach to an instance or ENI rather than a subnet",
+        "They can reference another security group as a source"
+      ],
+      "answer": [0, 2, 3],
+      "explanation": "Security groups are stateful, instance-level, allow-only, and can reference other security groups — which is the idiomatic way to say 'the database accepts connections from the app tier'. NACLs are stateless, subnet-level, and support deny rules.",
+      "points": 3
+    },
+    {
+      "id": "w2-q11",
+      "type": "ordering",
+      "prompt": "Put the network triage steps in the order that eliminates the most possibilities soonest.",
+      "items": [
+        "Check the host firewall inside the OS",
+        "Check the security group on the destination",
+        "Check the route table",
+        "Confirm the service is listening on 0.0.0.0 rather than 127.0.0.1",
+        "Check the network ACL, including ephemeral ports"
+      ],
+      "answer": [
+        "Check the security group on the destination",
+        "Check the route table",
+        "Check the network ACL, including ephemeral ports",
+        "Check the host firewall inside the OS",
+        "Confirm the service is listening on 0.0.0.0 rather than 127.0.0.1"
+      ],
+      "explanation": "Cheapest checks first, each eliminating a class of cause. The last step catches people constantly — a service bound to 127.0.0.1 is unreachable no matter how permissive the network is.",
+      "points": 3
+    },
+    {
+      "id": "w2-q12",
+      "type": "single",
+      "prompt": "You grant a user `AdministratorAccess` and they still get AccessDenied. Which explanation is **impossible**?",
+      "options": [
+        "A Service Control Policy at the organisation level is capping the account",
+        "A permissions boundary is attached to the user",
+        "An explicit Deny exists in another attached policy",
+        "AdministratorAccess only applies to resources the user created"
+      ],
+      "answer": 3,
+      "explanation": "AdministratorAccess is not scoped to resources you created. The other three are the real causes, along with a resource-based policy that does not grant the principal access, and an unmet MFA condition."
+    },
+    {
+      "id": "w2-q13",
+      "type": "boolean",
+      "prompt": "You should store AWS access keys in a file on an EC2 instance so the application can authenticate.",
+      "answer": false,
+      "explanation": "Attach an instance profile — a role — instead. The instance retrieves short-lived credentials from the metadata service and they rotate automatically. Keys committed to a repository are found by automated scanners within seconds."
+    },
+    {
+      "id": "w2-q14",
+      "type": "single",
+      "prompt": "An instance that worked an hour ago now gives 'Connection timed out' on SSH. Nothing was deployed. Most likely cause?",
+      "options": [
+        "The SSH private key has expired",
+        "Your public IP changed, so the 'My IP' security group rule no longer matches",
+        "The AMI was deprecated",
+        "The wrong username was used"
+      ],
+      "answer": 1,
+      "explanation": "A timeout is a network-reachability symptom. Authentication problems produce 'Permission denied (publickey)', which is usually the wrong username — ec2-user versus ubuntu. SSH keys do not expire."
+    },
+    {
+      "id": "w2-q15",
+      "type": "single",
+      "prompt": "A Lambda works in testing but returns intermittent 500s under load, with database connection errors. Which fix addresses the root cause?",
+      "options": [
+        "Increase the Lambda timeout",
+        "Increase the Lambda memory allocation",
+        "Add RDS Proxy or set reserved concurrency to cap simultaneous connections",
+        "Switch to a newer Python runtime"
+      ],
+      "answer": 2,
+      "explanation": "Each concurrent execution opens its own connection, so a burst exhausts the database's connection limit. Pooling with RDS Proxy, capping concurrency, or putting a queue in front all address that; timeout and memory changes do not reduce the connection count.",
+      "points": 2
+    },
+    {
+      "id": "w2-q16",
+      "type": "short",
+      "prompt": "Which AWS resource costs roughly $32/month whether you use it or not, and is the most common surprise on a learning bill?",
+      "accepted": ["NAT Gateway", "NAT gateway", "nat gateway", "NAT", "NATGateway"],
+      "pattern": "nat\\s*gateway|^nat$",
+      "placeholder": "service name",
+      "explanation": "A NAT Gateway is always on and billed hourly plus per GB processed. Elastic IPs allocated but unattached, and EBS volumes orphaned after terminating an instance, are the runners-up."
+    }
+  ]
+}

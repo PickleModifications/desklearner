@@ -133,7 +133,15 @@ function touchActivity(
 }
 
 export const useProgress = create<ProgressStore>((set, get) => {
+  /**
+   * Applies a new state and schedules a write.
+   *
+   * Refuses to do either before the initial load has resolved — otherwise a
+   * component that mounts and records activity while `load()` is still in
+   * flight would persist an empty state over the user's real progress.
+   */
   const commit = (next: ProgressState): void => {
+    if (!get().loaded) return
     set({ state: next })
     persist(next)
   }

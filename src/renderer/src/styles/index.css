@@ -2,6 +2,7 @@
 @import './tokens.css';
 @import 'katex/dist/katex.min.css';
 @import './markdown.css';
+@import './teacher.css';
 
 @theme inline {
   --color-bg: var(--bg);

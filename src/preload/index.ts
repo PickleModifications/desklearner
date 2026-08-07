@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { CH } from '@shared/channels'
-import type { DeskLearnerApi, ProgressState, Settings, ThemeMode } from '@shared/types'
+import type {
+  ChatState,
+  DeskLearnerApi,
+  ProgressState,
+  Settings,
+  TeacherSendRequest,
+  TeacherStreamEvent,
+  ThemeMode
+} from '@shared/types'
 
 const api: DeskLearnerApi = {
   info: () => ipcRenderer.invoke(CH.info),
@@ -52,6 +60,27 @@ const api: DeskLearnerApi = {
       ipcRenderer.on(CH.winMaximizeChanged, handler)
       return () => ipcRenderer.removeListener(CH.winMaximizeChanged, handler)
     }
+  },
+
+  ai: {
+    keyStatus: () => ipcRenderer.invoke(CH.aiKeyStatus),
+    setKey: (key: string) => ipcRenderer.invoke(CH.aiKeySet, key),
+    clearKey: () => ipcRenderer.invoke(CH.aiKeyClear),
+    send: (request: TeacherSendRequest) => ipcRenderer.invoke(CH.aiSend, request),
+    abort: (requestId: string) => ipcRenderer.invoke(CH.aiAbort, requestId),
+    pickAttachments: () => ipcRenderer.invoke(CH.aiPickAttachments),
+    readAttachment: (file: string) => ipcRenderer.invoke(CH.aiReadAttachment, file),
+    onStreamEvent: (cb) => {
+      const handler = (_e: unknown, event: TeacherStreamEvent): void => cb(event)
+      ipcRenderer.on(CH.aiStreamEvent, handler)
+      return () => ipcRenderer.removeListener(CH.aiStreamEvent, handler)
+    }
+  },
+
+  chats: {
+    get: () => ipcRenderer.invoke(CH.chatsGet),
+    set: (next: ChatState) => ipcRenderer.invoke(CH.chatsSet, next),
+    clear: () => ipcRenderer.invoke(CH.chatsClear)
   },
 
   system: {
