@@ -1,0 +1,309 @@
+/* ------------------------------------------------------------------ *
+ * Lesson prose. Sizing is driven by reader settings via inline CSS vars
+ * (--reader-size / --reader-leading / --reader-width) set on .markdown.
+ * ------------------------------------------------------------------ */
+
+.markdown {
+  font-size: var(--reader-size, 16px);
+  line-height: var(--reader-leading, 1.7);
+  color: var(--text);
+  max-width: var(--reader-width, 760px);
+  margin-inline: auto;
+  overflow-wrap: break-word;
+}
+
+.markdown > *:first-child {
+  margin-top: 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-family: var(--font-sans);
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.011em;
+  scroll-margin-top: 5.5rem;
+  position: relative;
+}
+
+.markdown h1 {
+  font-size: 1.95em;
+  margin: 2.2em 0 0.6em;
+}
+.markdown h2 {
+  font-size: 1.45em;
+  margin: 2em 0 0.6em;
+  padding-bottom: 0.32em;
+  border-bottom: 1px solid var(--border);
+}
+.markdown h3 {
+  font-size: 1.18em;
+  margin: 1.7em 0 0.5em;
+}
+.markdown h4 {
+  font-size: 1.02em;
+  margin: 1.4em 0 0.45em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.85em;
+}
+
+.markdown .heading-anchor {
+  position: absolute;
+  left: -1.1em;
+  width: 1em;
+  opacity: 0;
+  color: var(--text-subtle);
+  text-decoration: none;
+  transition: opacity 0.12s;
+}
+.markdown h1:hover .heading-anchor,
+.markdown h2:hover .heading-anchor,
+.markdown h3:hover .heading-anchor,
+.markdown h4:hover .heading-anchor {
+  opacity: 1;
+}
+
+.markdown p {
+  margin: 0 0 1.05em;
+}
+
+.markdown a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.markdown a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.markdown strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 1.05em;
+  padding-left: 1.45em;
+}
+.markdown li {
+  margin: 0.35em 0;
+}
+.markdown li > ul,
+.markdown li > ol {
+  margin: 0.35em 0;
+}
+.markdown ul {
+  list-style: disc;
+}
+.markdown ul ul {
+  list-style: circle;
+}
+.markdown ol {
+  list-style: decimal;
+}
+.markdown li::marker {
+  color: var(--text-subtle);
+}
+
+.markdown blockquote {
+  margin: 1.3em 0;
+  padding: 0.15em 0 0.15em 1.05em;
+  border-left: 3px solid var(--accent-border);
+  color: var(--text-muted);
+  font-style: italic;
+}
+.markdown blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown hr {
+  margin: 2.2em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* --------------------------------- code ---------------------------------- */
+
+.markdown :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 0.14em 0.38em;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--code-border);
+  white-space: nowrap;
+}
+
+.code-block {
+  margin: 1.3em 0;
+  border: 1px solid var(--code-border);
+  border-radius: 10px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.code-block__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+  border-bottom: 1px solid var(--code-border);
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.code-block__body {
+  overflow-x: auto;
+}
+.code-block__body pre {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  line-height: 1.6;
+  background: transparent !important;
+}
+.code-block__body code {
+  font-family: inherit;
+}
+
+/* -------------------------------- tables --------------------------------- */
+
+.markdown .table-wrap {
+  overflow-x: auto;
+  margin: 1.3em 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.markdown th,
+.markdown td {
+  text-align: left;
+  padding: 0.55em 0.85em;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.markdown thead th {
+  background: var(--surface-2);
+  font-weight: 620;
+  font-size: 0.88em;
+  letter-spacing: 0.01em;
+}
+.markdown tbody tr:last-child td {
+  border-bottom: 0;
+}
+.markdown tbody tr:hover {
+  background: color-mix(in oklab, var(--surface-2) 55%, transparent);
+}
+
+/* -------------------------------- images --------------------------------- */
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* -------------------------------- katex ---------------------------------- */
+
+.markdown .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.4em 0;
+}
+
+/* -------------------------------- mermaid -------------------------------- */
+
+.mermaid-figure {
+  margin: 1.4em 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow-x: auto;
+  text-align: center;
+}
+.mermaid-figure svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --------------------------------- steps --------------------------------- */
+
+.dl-steps > ol {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: dl-step;
+  margin: 0;
+}
+.dl-steps > ol > li {
+  position: relative;
+  counter-increment: dl-step;
+  padding-left: 2.4em;
+  padding-bottom: 1.1em;
+  margin: 0;
+}
+.dl-steps > ol > li::before {
+  content: counter(dl-step);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  width: 1.65em;
+  height: 1.65em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.78em;
+  font-weight: 650;
+}
+.dl-steps > ol > li::after {
+  content: '';
+  position: absolute;
+  left: 0.8em;
+  top: 1.95em;
+  bottom: 0.2em;
+  width: 1px;
+  background: var(--border);
+}
+.dl-steps > ol > li:last-child {
+  padding-bottom: 0;
+}
+.dl-steps > ol > li:last-child::after {
+  display: none;
+}
+
+/* ------------------------------- task lists ------------------------------ */
+
+.markdown ul.contains-task-list {
+  list-style: none;
+  padding-left: 0.2em;
+}
+.markdown li.task-list-item {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
+}
+.markdown li.task-list-item input {
+  margin-top: 0.36em;
+  accent-color: var(--accent);
+}

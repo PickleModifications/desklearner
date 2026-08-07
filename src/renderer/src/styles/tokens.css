@@ -1,0 +1,172 @@
+/* ------------------------------------------------------------------ *
+ * Theme tokens. Every colour in the app resolves through these vars so
+ * Mermaid, Shiki and KaTeX can all be re-themed from one place.
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bg: #f4f5f7;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f0f1f4;
+  --surface-3: #e6e8ec;
+  --border: #dfe1e6;
+  --border-strong: #c8ccd4;
+  --text: #16181d;
+  --text-muted: #5b6270;
+  --text-subtle: #868d9b;
+  --shadow-color: 220 20% 40%;
+  --shadow-1: 0 1px 2px hsl(var(--shadow-color) / 0.08);
+  --shadow-2: 0 4px 16px -4px hsl(var(--shadow-color) / 0.16);
+  --shadow-3: 0 18px 48px -12px hsl(var(--shadow-color) / 0.28);
+  --success: #17803d;
+  --success-soft: #e7f6ec;
+  --warning: #a35b00;
+  --warning-soft: #fdf1de;
+  --danger: #c0332c;
+  --danger-soft: #fdecea;
+  --info: #1a63bd;
+  --info-soft: #e8f1fd;
+  --code-bg: #f6f7f9;
+  --code-border: #e2e4e9;
+  --selection: color-mix(in oklab, var(--accent) 24%, transparent);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0e1014;
+  --bg-elevated: #14171d;
+  --surface: #14171d;
+  --surface-2: #1a1e26;
+  --surface-3: #232833;
+  --border: #262b35;
+  --border-strong: #363d4a;
+  --text: #e8eaee;
+  --text-muted: #a2a9b8;
+  --text-subtle: #737c8c;
+  --shadow-color: 220 60% 2%;
+  --shadow-1: 0 1px 2px hsl(var(--shadow-color) / 0.5);
+  --shadow-2: 0 4px 16px -4px hsl(var(--shadow-color) / 0.6);
+  --shadow-3: 0 18px 48px -12px hsl(var(--shadow-color) / 0.75);
+  --success: #4ade80;
+  --success-soft: #10261a;
+  --warning: #fbbf24;
+  --warning-soft: #2a2110;
+  --danger: #f87171;
+  --danger-soft: #2c1516;
+  --info: #7cb2f5;
+  --info-soft: #101d2e;
+  --code-bg: #11141a;
+  --code-border: #232833;
+  color-scheme: dark;
+}
+
+/* --------------------------------- accents ------------------------------- */
+
+:root,
+:root[data-accent='indigo'] {
+  --accent: #5b5bd6;
+  --accent-hover: #4f4fc4;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='violet'] {
+  --accent: #8250df;
+  --accent-hover: #7444c9;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='blue'] {
+  --accent: #2a72d4;
+  --accent-hover: #2364bd;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='teal'] {
+  --accent: #0d8f8f;
+  --accent-hover: #0b7c7c;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='emerald'] {
+  --accent: #0f8a4d;
+  --accent-hover: #0c7742;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='amber'] {
+  --accent: #b26a00;
+  --accent-hover: #9a5c00;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='rose'] {
+  --accent: #cf3a63;
+  --accent-hover: #b93257;
+  --accent-contrast: #ffffff;
+}
+:root[data-accent='slate'] {
+  --accent: #4a5768;
+  --accent-hover: #3d4859;
+  --accent-contrast: #ffffff;
+}
+
+:root[data-theme='dark'][data-accent='indigo'] {
+  --accent: #8c8cf0;
+  --accent-hover: #9e9ef4;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='violet'] {
+  --accent: #b18cf5;
+  --accent-hover: #c0a2f7;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='blue'] {
+  --accent: #6ba6f5;
+  --accent-hover: #85b6f7;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='teal'] {
+  --accent: #3ec9c0;
+  --accent-hover: #5ed6ce;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='emerald'] {
+  --accent: #4fc97e;
+  --accent-hover: #6bd693;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='amber'] {
+  --accent: #e0a53c;
+  --accent-hover: #ecb75a;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='rose'] {
+  --accent: #f0708f;
+  --accent-hover: #f48ba4;
+  --accent-contrast: #0e1014;
+}
+:root[data-theme='dark'][data-accent='slate'] {
+  --accent: #98a5b8;
+  --accent-hover: #adb8c8;
+  --accent-contrast: #0e1014;
+}
+
+:root {
+  --accent-soft: color-mix(in oklab, var(--accent) 14%, var(--surface));
+  --accent-border: color-mix(in oklab, var(--accent) 38%, var(--border));
+  --accent-text: color-mix(in oklab, var(--accent) 82%, var(--text));
+}
+
+/* --------------------------------- density ------------------------------- */
+
+:root {
+  --row-pad-y: 0.45rem;
+  --section-gap: 1.5rem;
+}
+:root[data-density='compact'] {
+  --row-pad-y: 0.3rem;
+  --section-gap: 1rem;
+}
+
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

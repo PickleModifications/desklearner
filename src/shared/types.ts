@@ -1,0 +1,404 @@
+/**
+ * Types shared between the Electron main process, the preload bridge and the renderer.
+ * Everything the app persists lives under the user's `userData` directory — no network, ever.
+ */
+
+/* ------------------------------------------------------------------ *
+ * Course packs
+ * ------------------------------------------------------------------ */
+
+export interface LessonRef {
+  id: string
+  title: string
+  /** Path to the markdown file, relative to the pack root. */
+  file: string
+  /** Rough reading/working time in minutes. */
+  minutes?: number
+}
+
+export interface TestRef {
+  id: string
+  title: string
+  /** Path to the test JSON file, relative to the pack root. */
+  file: string
+}
+
+export interface ChapterRef {
+  id: string
+  title: string
+  summary?: string
+  lessons: LessonRef[]
+  test?: TestRef
+}
+
+export interface CourseManifest {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  version: string
+  author?: string
+  tags?: string[]
+  /** Hex colour used as the course accent in the library. */
+  color?: string
+  estimatedHours?: number
+  chapters: ChapterRef[]
+  /** Optional course-wide final exam. */
+  finalExam?: TestRef
+}
+
+export type PackSource = 'bundled' | 'user'
+
+export interface CoursePack {
+  manifest: CourseManifest
+  /** Absolute path to the pack directory on disk. */
+  root: string
+  source: PackSource
+}
+
+/** A pack that failed to load, surfaced in Settings -> Content rather than crashing. */
+export interface BrokenPack {
+  root: string
+  source: PackSource
+  error: string
+}
+
+export interface ContentIndex {
+  courses: CoursePack[]
+  broken: BrokenPack[]
+}
+
+export interface LessonFrontmatter {
+  title?: string
+  summary?: string
+  minutes?: number
+  objectives?: string[]
+  keyTerms?: Array<{ term: string; definition: string }>
+  resources?: Array<{ label: string; url: string }>
+}
+
+export interface LessonDocument {
+  courseId: string
+  chapterId: string
+  lessonId: string
+  frontmatter: LessonFrontmatter
+  markdown: string
+}
+
+/* ------------------------------------------------------------------ *
+ * Tests
+ * ------------------------------------------------------------------ */
+
+export type QuestionType =
+  | 'single'
+  | 'multi'
+  | 'boolean'
+  | 'short'
+  | 'ordering'
+  | 'matching'
+  | 'fill-blank'
+
+interface BaseQuestion {
+  id: string
+  type: QuestionType
+  prompt: string
+  /** Shown in review mode after submitting. */
+  explanation?: string
+  points?: number
+}
+
+export interface SingleChoiceQuestion extends BaseQuestion {
+  type: 'single'
+  options: string[]
+  /** Index into `options`. */
+  answer: number
+}
+
+export interface MultiChoiceQuestion extends BaseQuestion {
+  type: 'multi'
+  options: string[]
+  /** Indices into `options`; all must be selected and nothing else. */
+  answer: number[]
+}
+
+export interface BooleanQuestion extends BaseQuestion {
+  type: 'boolean'
+  answer: boolean
+}
+
+export interface ShortAnswerQuestion extends BaseQuestion {
+  type: 'short'
+  /** Case-insensitive, whitespace-normalised comparison. */
+  accepted: string[]
+  /** Optional regular expression (evaluated case-insensitively) as an alternative match. */
+  pattern?: string
+  placeholder?: string
+}
+
+export interface OrderingQuestion extends BaseQuestion {
+  type: 'ordering'
+  /** Items presented shuffled; `answer` holds them in the correct order. */
+  items: string[]
+  answer: string[]
+}
+
+export interface MatchingQuestion extends BaseQuestion {
+  type: 'matching'
+  pairs: Array<{ left: string; right: string }>
+}
+
+export interface FillBlankQuestion extends BaseQuestion {
+  type: 'fill-blank'
+  /** Text containing `{{0}}`, `{{1}}` … placeholders. */
+  text: string
+  /** One entry per placeholder; each entry lists acceptable answers. */
+  blanks: string[][]
+}
+
+export type Question =
+  | SingleChoiceQuestion
+  | MultiChoiceQuestion
+  | BooleanQuestion
+  | ShortAnswerQuestion
+  | OrderingQuestion
+  | MatchingQuestion
+  | FillBlankQuestion
+
+export interface TestDocument {
+  id: string
+  title: string
+  description?: string
+  /** Percentage (0-100) required to pass. */
+  passingScore: number
+  shuffle?: boolean
+  timeLimitMinutes?: number
+  questions: Question[]
+}
+
+/** Answer payloads keyed by question id. */
+export type AnswerValue = number | number[] | boolean | string | string[] | Record<string, string>
+
+export interface QuestionResult {
+  questionId: string
+  correct: boolean
+  points: number
+  maxPoints: number
+  given: AnswerValue | undefined
+}
+
+export interface TestAttempt {
+  id: string
+  courseId: string
+  testId: string
+  /** ISO timestamp. */
+  startedAt: string
+  finishedAt: string
+  durationSeconds: number
+  score: number
+  maxScore: number
+  percent: number
+  passed: boolean
+  results: QuestionResult[]
+}
+
+/* ------------------------------------------------------------------ *
+ * Settings
+ * ------------------------------------------------------------------ */
+
+export type ThemeMode = 'light' | 'dark' | 'system'
+export type AccentName =
+  | 'indigo'
+  | 'violet'
+  | 'blue'
+  | 'teal'
+  | 'emerald'
+  | 'amber'
+  | 'rose'
+  | 'slate'
+export type Density = 'comfortable' | 'compact'
+export type ReaderFont = 'sans' | 'serif' | 'mono'
+
+export interface Settings {
+  theme: ThemeMode
+  accent: AccentName
+  density: Density
+  reducedMotion: boolean
+  readerFont: ReaderFont
+  fontSize: number
+  lineHeight: number
+  contentWidth: number
+  focusMode: boolean
+  sidebarCollapsed: boolean
+  showLessonNumbers: boolean
+  confirmBeforeReset: boolean
+  autoBackup: boolean
+  dailyGoalMinutes: number
+  lastCourseId?: string
+  lastLessonPath?: string
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'system',
+  accent: 'indigo',
+  density: 'comfortable',
+  reducedMotion: false,
+  readerFont: 'sans',
+  fontSize: 16,
+  lineHeight: 1.7,
+  contentWidth: 760,
+  focusMode: false,
+  sidebarCollapsed: false,
+  showLessonNumbers: true,
+  confirmBeforeReset: true,
+  autoBackup: true,
+  dailyGoalMinutes: 30
+}
+
+/* ------------------------------------------------------------------ *
+ * Progress
+ * ------------------------------------------------------------------ */
+
+export type LessonStatus = 'not-started' | 'in-progress' | 'complete'
+
+export interface LessonProgress {
+  status: LessonStatus
+  /** Seconds spent with the lesson open and the window focused. */
+  secondsSpent: number
+  /** 0-1 fraction of the document scrolled, used to restore reading position. */
+  scroll: number
+  lastOpenedAt?: string
+  completedAt?: string
+  bookmarked?: boolean
+  /** Persisted `:::checklist` state, keyed by checklist item index. */
+  checklist?: Record<string, boolean>
+  notes?: string
+}
+
+export interface CourseProgress {
+  lessons: Record<string, LessonProgress>
+  attempts: TestAttempt[]
+  startedAt?: string
+  lastOpenedAt?: string
+  /** `chapterId/lessonId` of the last lesson opened in this course. */
+  lastLesson?: string
+}
+
+export interface ActivityDay {
+  /** YYYY-MM-DD in local time. */
+  date: string
+  minutes: number
+  lessonsCompleted: number
+  testsPassed: number
+  xp: number
+}
+
+export interface ProgressState {
+  courses: Record<string, CourseProgress>
+  activity: Record<string, ActivityDay>
+  xp: number
+  streak: number
+  longestStreak: number
+  lastActiveDate?: string
+}
+
+export const EMPTY_PROGRESS: ProgressState = {
+  courses: {},
+  activity: {},
+  xp: 0,
+  streak: 0,
+  longestStreak: 0
+}
+
+/* ------------------------------------------------------------------ *
+ * IPC surface
+ * ------------------------------------------------------------------ */
+
+export interface AppInfo {
+  version: string
+  electron: string
+  chrome: string
+  node: string
+  platform: string
+  userDataPath: string
+  coursesPath: string
+}
+
+export interface ImportResult {
+  ok: boolean
+  courseId?: string
+  error?: string
+}
+
+export interface BackupFile {
+  name: string
+  path: string
+  createdAt: string
+  sizeBytes: number
+}
+
+export interface ExportBundle {
+  kind: 'desklearner-backup'
+  version: 1
+  exportedAt: string
+  settings: Settings
+  progress: ProgressState
+}
+
+export interface DeskLearnerApi {
+  info(): Promise<AppInfo>
+  settings: {
+    get(): Promise<Settings>
+    set(patch: Partial<Settings>): Promise<Settings>
+    reset(): Promise<Settings>
+  }
+  progress: {
+    get(): Promise<ProgressState>
+    set(next: ProgressState): Promise<void>
+    reset(): Promise<ProgressState>
+  }
+  content: {
+    list(): Promise<ContentIndex>
+    lesson(courseId: string, chapterId: string, lessonId: string): Promise<LessonDocument>
+    test(courseId: string, testId: string): Promise<TestDocument>
+    /** Every lesson's plain text, used to build the search index. */
+    searchCorpus(): Promise<
+      Array<{
+        id: string
+        courseId: string
+        courseTitle: string
+        chapterId: string
+        chapterTitle: string
+        lessonId: string
+        title: string
+        text: string
+      }>
+    >
+    /** Resolves a pack-relative asset to a `dl-asset://` URL. */
+    assetUrl(courseId: string, relativePath: string): Promise<string>
+  }
+  packs: {
+    importFolder(): Promise<ImportResult>
+    importArchive(): Promise<ImportResult>
+    remove(courseId: string): Promise<{ ok: boolean; error?: string }>
+    revealCourses(): Promise<void>
+  }
+  data: {
+    export(): Promise<{ ok: boolean; path?: string; error?: string }>
+    import(): Promise<{ ok: boolean; error?: string }>
+    listBackups(): Promise<BackupFile[]>
+    restoreBackup(path: string): Promise<{ ok: boolean; error?: string }>
+    openFolder(): Promise<void>
+  }
+  window: {
+    minimize(): void
+    toggleMaximize(): void
+    close(): void
+    isMaximized(): Promise<boolean>
+    onMaximizeChange(cb: (maximized: boolean) => void): () => void
+  }
+  system: {
+    openExternal(url: string): Promise<void>
+    setThemeSource(mode: ThemeMode): Promise<boolean>
+    onNativeThemeChange(cb: (isDark: boolean) => void): () => void
+  }
+}

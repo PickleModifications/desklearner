@@ -1,0 +1,44 @@
+appId: com.desklearner.app
+productName: DeskLearner
+copyright: Copyright © 2026 DeskLearner
+
+directories:
+  buildResources: build
+  output: release
+
+files:
+  - out/**
+  - package.json
+  - '!**/{.vscode,.github,src,scripts,docs}'
+  - '!**/*.map'
+
+extraResources:
+  - from: resources/courses
+    to: courses
+    filter: ['**/*']
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DeskLearner
+
+mac:
+  target: [dmg]
+  category: public.app-category.education
+
+linux:
+  target: [AppImage]
+  category: Education

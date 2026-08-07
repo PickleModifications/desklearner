@@ -1,0 +1,103 @@
+{
+  "id": "cloud-support-engineering",
+  "title": "Cloud Support Engineering",
+  "subtitle": "SQL Server, Python, JSON Schema, AWS, Azure & the Microsoft stack",
+  "description": "A six-week, thirty-seven-lesson path from \"I can write a SELECT\" to \"I can diagnose a production incident on a Microsoft-stack cloud platform at 2am.\"\n\nThis course is built around the tools a **cloud support engineer** actually touches: SQL Server and T-SQL through SSMS and Azure Data Studio, Python as a diagnostic instrument rather than an application language, JSON Schema as an API contract, Git as a team workflow, CI/CD pipelines, structured logging and observability, and both AWS and Azure — including Azure AD / Entra ID.\n\nEvery chapter ends with a test, and the course ends with a final exam. Two portfolio projects are built along the way.",
+  "version": "1.0.0",
+  "author": "DeskLearner",
+  "tags": ["SQL Server", "Python", "AWS", "Azure", "CI/CD", "Observability", "Support"],
+  "color": "#2a72d4",
+  "estimatedHours": 74,
+  "chapters": [
+    {
+      "id": "week-1",
+      "title": "SQL Server & Git",
+      "summary": "T-SQL from SELECT to execution plans, and Git as a team workflow rather than a save button.",
+      "lessons": [
+        { "id": "day-01", "title": "SQL Server Setup & T-SQL Fundamentals", "file": "lessons/day-01.md", "minutes": 90 },
+        { "id": "day-02", "title": "Joins: Combining Tables Without Lying", "file": "lessons/day-02.md", "minutes": 100 },
+        { "id": "day-03", "title": "Aggregation, Grouping & Subqueries", "file": "lessons/day-03.md", "minutes": 100 },
+        { "id": "day-04", "title": "Schema Design, Indexes & SSMS Tooling", "file": "lessons/day-04.md", "minutes": 110 },
+        { "id": "day-05", "title": "Git Beyond the Basics", "file": "lessons/day-05.md", "minutes": 100 },
+        { "id": "day-06", "title": "Git Workflows: PRs, Bisect, Stash, Cherry-pick", "file": "lessons/day-06.md", "minutes": 130 },
+        { "id": "day-07", "title": "Practice Day: Timed T-SQL & a Protected Repo", "file": "lessons/day-07.md", "minutes": 90 }
+      ],
+      "test": { "id": "test-week-1", "title": "Chapter 1 Test: SQL Server & Git", "file": "tests/test-week-1.json" }
+    },
+    {
+      "id": "week-2",
+      "title": "Python, JSON Schema & AWS Foundations",
+      "summary": "Support-flavoured Python, contract validation with JSON Schema, and your first AWS resources.",
+      "lessons": [
+        { "id": "day-08", "title": "Python for Support Engineering", "file": "lessons/day-08.md", "minutes": 110 },
+        { "id": "day-09", "title": "JSON Schema: Contracts That Fail Loudly", "file": "lessons/day-09.md", "minutes": 100 },
+        { "id": "day-10", "title": "Cloud Fundamentals & AWS Setup", "file": "lessons/day-10.md", "minutes": 90 },
+        { "id": "day-11", "title": "Compute (EC2) & Storage (S3)", "file": "lessons/day-11.md", "minutes": 110 },
+        { "id": "day-12", "title": "Networking & AWS IAM", "file": "lessons/day-12.md", "minutes": 110 },
+        { "id": "day-13", "title": "Lambda, API Gateway & a Managed Database", "file": "lessons/day-13.md", "minutes": 140 },
+        { "id": "day-14", "title": "Cloud Practitioner Practice Exam", "file": "lessons/day-14.md", "minutes": 90 }
+      ],
+      "test": { "id": "test-week-2", "title": "Chapter 2 Test: Python, JSON Schema & AWS", "file": "tests/test-week-2.json" }
+    },
+    {
+      "id": "week-3",
+      "title": "CI/CD & Logging",
+      "summary": "Pipelines that build, test and deploy — and the logs, metrics and traces that tell you when they lied.",
+      "lessons": [
+        { "id": "day-15", "title": "CI/CD Concepts", "file": "lessons/day-15.md", "minutes": 90 },
+        { "id": "day-16", "title": "GitHub Actions From Scratch", "file": "lessons/day-16.md", "minutes": 120 },
+        { "id": "day-17", "title": "CI/CD on AWS: CodePipeline & CodeBuild", "file": "lessons/day-17.md", "minutes": 90 },
+        { "id": "day-18", "title": "Logging Fundamentals", "file": "lessons/day-18.md", "minutes": 100 },
+        { "id": "day-19", "title": "Cloud-Native Logging & Monitoring", "file": "lessons/day-19.md", "minutes": 110 },
+        { "id": "day-20", "title": "Observability Beyond Logs", "file": "lessons/day-20.md", "minutes": 130 },
+        { "id": "day-21", "title": "Tie It Together: Alarms & an Incident Note", "file": "lessons/day-21.md", "minutes": 100 }
+      ],
+      "test": { "id": "test-week-3", "title": "Chapter 3 Test: CI/CD & Observability", "file": "tests/test-week-3.json" }
+    },
+    {
+      "id": "week-4",
+      "title": "Azure, Entra ID & Docker",
+      "summary": "The Microsoft half of the stack, plus containers — the packaging format both clouds agree on.",
+      "lessons": [
+        { "id": "day-22", "title": "Azure Onboarding & the AWS → Azure Map", "file": "lessons/day-22.md", "minutes": 90 },
+        { "id": "day-23", "title": "Azure Compute, Storage & Functions", "file": "lessons/day-23.md", "minutes": 120 },
+        { "id": "day-24", "title": "Azure Active Directory / Entra ID", "file": "lessons/day-24.md", "minutes": 120 },
+        { "id": "day-25", "title": "Azure Monitor, Log Analytics & KQL", "file": "lessons/day-25.md", "minutes": 110 },
+        { "id": "day-26", "title": "Docker Basics", "file": "lessons/day-26.md", "minutes": 110 },
+        { "id": "day-27", "title": "Containerise & Deploy", "file": "lessons/day-27.md", "minutes": 140 },
+        { "id": "day-28", "title": "AZ-900 Practice", "file": "lessons/day-28.md", "minutes": 90 }
+      ],
+      "test": { "id": "test-week-4", "title": "Chapter 4 Test: Azure, Entra ID & Containers", "file": "tests/test-week-4.json" }
+    },
+    {
+      "id": "week-5",
+      "title": "Certification & the Support Tool Project",
+      "summary": "Sit an exam, then build the thing the job description is really describing.",
+      "lessons": [
+        { "id": "day-29", "title": "Buffer & Certification Exam Day", "file": "lessons/day-29.md", "minutes": 120 },
+        { "id": "day-30", "title": "Designing Project #2: A Ticket Ingestion Tool", "file": "lessons/day-30.md", "minutes": 100 },
+        { "id": "day-31", "title": "Build: Schema & Ingestion", "file": "lessons/day-31.md", "minutes": 140 },
+        { "id": "day-32", "title": "Build: Deploy & Wire Up CI/CD", "file": "lessons/day-32.md", "minutes": 130 },
+        { "id": "day-33", "title": "Build: Logging, Monitoring & the README", "file": "lessons/day-33.md", "minutes": 120 },
+        { "id": "day-34", "title": "Terminology & Concept Review", "file": "lessons/day-34.md", "minutes": 90 },
+        { "id": "day-35", "title": "Mock Interview Preparation", "file": "lessons/day-35.md", "minutes": 130 }
+      ],
+      "test": { "id": "test-week-5", "title": "Chapter 5 Test: Project & Interview Readiness", "file": "tests/test-week-5.json" }
+    },
+    {
+      "id": "week-6",
+      "title": "Portfolio & Finish",
+      "summary": "Make the work legible to a hiring manager who will spend ninety seconds on it.",
+      "lessons": [
+        { "id": "day-36", "title": "Portfolio & Résumé Update", "file": "lessons/day-36.md", "minutes": 110 },
+        { "id": "day-37", "title": "Final Review & Rest Buffer", "file": "lessons/day-37.md", "minutes": 90 }
+      ],
+      "test": { "id": "test-week-6", "title": "Chapter 6 Test: Portfolio Readiness", "file": "tests/test-week-6.json" }
+    }
+  ],
+  "finalExam": {
+    "id": "final-exam",
+    "title": "Final Exam: Cloud Support Engineering",
+    "file": "tests/final-exam.json"
+  }
+}
