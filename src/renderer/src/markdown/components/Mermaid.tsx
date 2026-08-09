@@ -71,6 +71,22 @@ function themeVariables(isDark: boolean): Record<string, string> {
   return variables
 }
 
+/**
+ * Mermaid sizes its SVG with `width="100%"` and an inline `max-width` in px.
+ * A percentage width is immune to the reader's CSS zoom — the diagram would
+ * stay exactly the same size while the text around it grew — so we drop both
+ * and let the stylesheet size the diagram from its viewBox instead.
+ */
+function unlockSvgSize(svg: string): string {
+  return svg.replace(/<svg\b[^>]*?>/, (tag) => {
+    const intrinsic = /max-width:\s*([\d.]+)px/.exec(tag)?.[1]
+    if (!intrinsic) return tag
+    return tag
+      .replace(/max-width:\s*[^;"]*;?/, '')
+      .replace(/\swidth="100%"/, ` width="${Math.round(Number(intrinsic))}"`)
+  })
+}
+
 export function Mermaid({ chart }: { chart: string }): React.JSX.Element {
   const isDark = useUi((s) => s.isDark)
   const [svg, setSvg] = useState('')
@@ -92,7 +108,7 @@ export function Mermaid({ chart }: { chart: string }): React.JSX.Element {
         })
         const { svg: out } = await mermaid.render(id, chart)
         if (!cancelled) {
-          setSvg(out)
+          setSvg(unlockSvgSize(out))
           setError(null)
         }
       } catch (err) {

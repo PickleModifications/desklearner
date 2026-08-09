@@ -241,8 +241,10 @@
   text-align: center;
 }
 .mermaid-figure svg {
-  max-width: 100%;
   height: auto;
+  /* At zoom 1 this is a plain `max-width: 100%`. Zoomed in, the allowance grows
+     with the zoom so diagrams actually get bigger and the figure scrolls. */
+  max-width: calc(100% * var(--reader-zoom, 1));
 }
 
 /* --------------------------------- steps --------------------------------- */

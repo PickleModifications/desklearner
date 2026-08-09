@@ -214,6 +214,8 @@ export interface Settings {
   fontSize: number
   lineHeight: number
   contentWidth: number
+  /** Reader zoom multiplier for lesson content (Ctrl+scroll or the header control). */
+  readerZoom: number
   focusMode: boolean
   sidebarCollapsed: boolean
   showLessonNumbers: boolean
@@ -237,6 +239,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fontSize: 16,
   lineHeight: 1.7,
   contentWidth: 760,
+  readerZoom: 1,
   focusMode: false,
   sidebarCollapsed: false,
   showLessonNumbers: true,

@@ -11,7 +11,9 @@ import {
   Focus,
   NotebookPen,
   PanelLeft,
-  Target
+  Target,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react'
 import type { LessonDocument } from '@shared/types'
 import { findCoursePack, flattenLessons, useContent } from '@/stores/content'
@@ -19,6 +21,7 @@ import { getLesson, useProgress } from '@/stores/progress'
 import { useSettings } from '@/stores/settings'
 import { useUi } from '@/stores/ui'
 import { useLessonTimer } from '@/hooks/useLessonTimer'
+import { useReaderZoom, ZOOM_MAX, ZOOM_MIN } from '@/hooks/useReaderZoom'
 import { Markdown } from '@/markdown/Markdown'
 import { CourseSidebar } from './CourseSidebar'
 import { NotesDrawer } from './NotesDrawer'
@@ -56,6 +59,7 @@ export function LessonPage(): React.JSX.Element {
   const headings = useHeadings(articleEl, doc?.markdown)
 
   useLessonTimer(courseId, chapterId, lessonId)
+  const zoom = useReaderZoom(scrollEl)
 
   /* ------------------------------------------------------------- loading */
 
@@ -202,6 +206,35 @@ export function LessonPage(): React.JSX.Element {
             </span>
           )}
 
+          <div
+            className="hidden items-center rounded-md border border-line sm:inline-flex"
+            title="Zoom content (Ctrl + scroll, Ctrl +/-)"
+          >
+            <button
+              className="btn btn-ghost h-7 w-7 !rounded-r-none !px-0"
+              aria-label="Zoom out"
+              disabled={zoom.zoom <= ZOOM_MIN}
+              onClick={zoom.zoomOut}
+            >
+              <ZoomOut size={14} />
+            </button>
+            <button
+              className="btn btn-ghost h-7 !rounded-none !px-1 text-[11px] tabular-nums text-ink-subtle"
+              aria-label="Reset zoom"
+              onClick={zoom.reset}
+            >
+              {Math.round(zoom.zoom * 100)}%
+            </button>
+            <button
+              className="btn btn-ghost h-7 w-7 !rounded-l-none !px-0"
+              aria-label="Zoom in"
+              disabled={zoom.zoom >= ZOOM_MAX}
+              onClick={zoom.zoomIn}
+            >
+              <ZoomIn size={14} />
+            </button>
+          </div>
+
           <button
             className={cn('btn btn-ghost h-7 w-7 !px-0', entry.bookmarked && 'text-accent')}
             title="Bookmark"
@@ -245,7 +278,11 @@ export function LessonPage(): React.JSX.Element {
               <article
                 ref={setArticleEl}
                 className="min-w-0 flex-1 px-8 py-8"
-                style={{ maxWidth: settings.contentWidth + 120 }}
+                style={{
+                  maxWidth: settings.contentWidth + 120,
+                  zoom: zoom.zoom,
+                  ['--reader-zoom' as string]: String(zoom.zoom)
+                }}
               >
                 {error && (
                   <div
