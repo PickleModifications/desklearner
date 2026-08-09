@@ -243,21 +243,24 @@ Real support queries chain several tables. Keep them readable:
 ```sql title="multi-join.sql"
 SELECT   soh.SalesOrderID,
          soh.OrderDate,
-         p.FirstName + ' ' + p.LastName AS CustomerName,
-         st.Name                        AS Territory,
+         c.FirstName + ' ' + c.LastName AS CustomerName,
+         a.CountryRegion,
          SUM(sod.LineTotal)             AS OrderTotal
-FROM     Sales.SalesOrderHeader  AS soh
-JOIN     Sales.SalesOrderDetail  AS sod ON sod.SalesOrderID = soh.SalesOrderID
-JOIN     Sales.Customer          AS c   ON c.CustomerID     = soh.CustomerID
-JOIN     Person.Person           AS p   ON p.BusinessEntityID = c.PersonID
-LEFT JOIN Sales.SalesTerritory   AS st  ON st.TerritoryID   = soh.TerritoryID
-WHERE    soh.OrderDate >= '2013-01-01'
-  AND    soh.OrderDate <  '2014-01-01'
-GROUP BY soh.SalesOrderID, soh.OrderDate, p.FirstName, p.LastName, st.Name
+FROM     SalesLT.SalesOrderHeader AS soh
+JOIN     SalesLT.SalesOrderDetail AS sod ON sod.SalesOrderID = soh.SalesOrderID
+JOIN     SalesLT.Customer         AS c   ON c.CustomerID     = soh.CustomerID
+LEFT JOIN SalesLT.Address         AS a   ON a.AddressID      = soh.ShipToAddressID
+WHERE    soh.OrderDate >= '2008-01-01'
+  AND    soh.OrderDate <  '2009-01-01'
+GROUP BY soh.SalesOrderID, soh.OrderDate, c.FirstName, c.LastName, a.CountryRegion
 ORDER BY OrderTotal DESC;
 ```
 
-Notice the `LEFT JOIN` to territory: an order might not have one, and we do not want to lose the order because of it. That deliberate mixing of inner and outer joins in one query is normal and correct.
+Notice the `LEFT JOIN` to the shipping address: an order might not have one, and we do not want to lose the order because of it. That deliberate mixing of inner and outer joins in one query is normal and correct.
+
+:::hint{type=tip}
+`SalesLT` has no `SalesTerritory` table — geography lives on `SalesLT.Address` as `City`, `StateProvince` and `CountryRegion`, reached either directly from the order (`ShipToAddressID` / `BillToAddressID`) or through the `SalesLT.CustomerAddress` many-to-many. Whenever a drill in this course says "per territory", read it as "per `CountryRegion`" or "per `StateProvince`".
+:::
 
 :::hint{type=tip}
 Build multi-table queries **incrementally**. Start with one table and `SELECT TOP (10) *`. Add one join, re-run, check the row count did what you expected. Add the next. When the count jumps unexpectedly you know exactly which join caused it. Writing all six joins and then debugging is how people lose an afternoon.
@@ -267,55 +270,66 @@ Build multi-table queries **incrementally**. Start with one table and `SELECT TO
 
 A table joined to itself — the standard way to model hierarchies.
 
+`SalesLT.ProductCategory` is genuinely self-referencing — every category optionally points at a parent through `ParentProductCategoryID` — so this one you can run for real.
+
 ```sql title="self-join.sql"
-SELECT   e.BusinessEntityID AS EmployeeId,
-         emp.JobTitle       AS EmployeeTitle,
-         mgr.JobTitle       AS ManagerTitle
-FROM     HumanResources.Employee AS emp
-JOIN     HumanResources.Employee AS e   ON e.BusinessEntityID = emp.BusinessEntityID
-LEFT JOIN HumanResources.Employee AS mgr ON mgr.BusinessEntityID = emp.OrganizationNode.GetAncestor(1).ToString();
+SELECT   child.ProductCategoryID,
+         child.Name        AS CategoryName,
+         parent.Name       AS ParentCategoryName
+FROM     SalesLT.ProductCategory AS child
+LEFT JOIN SalesLT.ProductCategory AS parent
+       ON parent.ProductCategoryID = child.ParentProductCategoryID
+ORDER BY ParentCategoryName, CategoryName;
 ```
 
-The syntax details vary by schema; the concept is what matters. Two aliases on the same table, `LEFT JOIN` so the CEO (who has no manager) is not dropped.
+Two aliases on the same table, and `LEFT JOIN` so the four top-level categories — which have no parent — are not dropped. Swap it for an `INNER JOIN` and watch them vanish; that is the whole lesson in one edit.
+
+:::hint{type=tip}
+Hierarchies of unknown depth need a **recursive CTE** (`WITH … AS (… UNION ALL …)`), not a self-join — a self-join can only walk one level per join you write. `SalesLT` ships a view, `SalesLT.vGetAllCategories`, that does exactly this flattening; script it out in Object Explorer and read how it works.
+:::
 
 ## Exercise: 15 join problems
 
-Work through these against AdventureWorks. Time yourself on the second pass — the goal is for the *syntax* to become automatic so your attention goes to the *question*.
+Work through these against `SalesLT`, except where a drill names `dbo.Transactions`. Time yourself on the second pass — the goal is for the *syntax* to become automatic so your attention goes to the *question*.
 
 :::checklist{title="Join drills"}
-- [ ] 1. Every product with its subcategory name (products without a subcategory must still appear)
-- [ ] 2. Every product **without** a subcategory
-- [ ] 3. Sales orders with the salesperson's full name; include orders with no salesperson
-- [ ] 4. Customers who have placed at least one order in 2013
-- [ ] 5. Customers who placed an order in 2012 but **not** in 2013
-- [ ] 6. Products that have never been ordered
+- [ ] 1. Every product with its category name (products without a category must still appear)
+- [ ] 2. Every product **without** a category
+- [ ] 3. Every category with its parent category name; include the top-level ones
+- [ ] 4. Every customer with the count of orders they have placed, including the ~815 with none
+- [ ] 5. Customers who have a transaction in `dbo.Transactions` but **no** row in `SalesLT.SalesOrderHeader`
+- [ ] 6. Products that have never appeared on an order line
 - [ ] 7. The total line-item revenue per order, correctly (watch for fan-out)
-- [ ] 8. Employees and their department names, using the department history table
-- [ ] 9. Orders where the ship address is in a different country from the bill address
-- [ ] 10. Each territory with its order count, including territories with zero orders
-- [ ] 11. Product pairs that appear on the same order (a self-join on order detail)
-- [ ] 12. Vendors with no purchase orders in the last two years
-- [ ] 13. The five customers with the highest 2013 spend, with their territory name
-- [ ] 14. Any order whose `TotalDue` disagrees with the sum of its line items
-- [ ] 15. A FULL OUTER JOIN reconciliation between `Sales.Customer` and `Person.Person`
+- [ ] 8. Every customer with their main-office address, using `SalesLT.CustomerAddress`
+- [ ] 9. Orders where `ShipToAddressID` and `BillToAddressID` resolve to different countries
+- [ ] 10. Each `CountryRegion` with its order count, including countries with zero orders
+- [ ] 11. Product pairs that appear on the same order (a self-join on `SalesOrderDetail`)
+- [ ] 12. Customers with no *failed* transaction in the last 30 days
+- [ ] 13. The five customers with the highest order total, with their city and country
+- [ ] 14. Any order whose `SubTotal` disagrees with the sum of its line items
+- [ ] 15. A FULL OUTER JOIN reconciliation between `SalesLT.Customer` and the distinct `CustomerId` values in `dbo.Transactions`
 :::
 
-:::details{summary="Worked answer for #5 — 2012 but not 2013"}
+:::hint{type=tip}
+Drill 4 is the one that proves the point of an outer join on this dataset: 847 customers, 32 orders. An `INNER JOIN` gives you 32 rows and an answer that looks plausible. Only the `LEFT JOIN` tells you that 96% of the customer base has never bought anything — which is the fact a business would actually want.
+:::
+
+:::details{summary="Worked answer for #5 — active in one system, absent from the other"}
 ```sql
-SELECT DISTINCT c.CustomerID
-FROM   Sales.SalesOrderHeader AS c2012
-JOIN   Sales.Customer AS c ON c.CustomerID = c2012.CustomerID
-WHERE  c2012.OrderDate >= '2012-01-01' AND c2012.OrderDate < '2013-01-01'
-  AND  NOT EXISTS (
-         SELECT 1
-         FROM   Sales.SalesOrderHeader AS c2013
-         WHERE  c2013.CustomerID = c.CustomerID
-           AND  c2013.OrderDate >= '2013-01-01'
-           AND  c2013.OrderDate <  '2014-01-01'
-       );
+SELECT   t.CustomerId,
+         COUNT(*)             AS TransactionCount,
+         MAX(t.CreatedAtUtc)  AS LastSeen
+FROM     dbo.Transactions AS t
+WHERE    NOT EXISTS (
+             SELECT 1
+             FROM   SalesLT.SalesOrderHeader AS soh
+             WHERE  soh.CustomerID = t.CustomerId
+         )
+GROUP BY t.CustomerId
+ORDER BY TransactionCount DESC;
 ```
 
-The shape — "matches condition A, and `NOT EXISTS` a row matching condition B" — is the workhorse for churn, lapsed-user and missing-retry questions. Learn it as a template.
+The shape — "matches condition A, and `NOT EXISTS` a row matching condition B" — is the workhorse for churn, lapsed-user, missing-retry and *two systems disagree* questions. Learn it as a template; that last category is most of reconciliation work.
 :::
 
 ## Where this is going

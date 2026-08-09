@@ -350,19 +350,23 @@ def chunks(iterable, size):
 `newline=""` in the `csv` calls is not optional on Windows. Omit it and every row gets a blank line between it and the next. It is the single most-Googled Python CSV problem.
 :::
 
-## Talking to SQL Server from Python
+## Talking to Azure SQL from Python
 
 This ties Week 1 to Week 2, and previews the Week 5 project.
 
-```python title="query_sqlserver.py"
+```python title="query_azure_sql.py"
+import os
 import pyodbc     # pip install pyodbc
 
 CONN = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
-    "SERVER=localhost;"
-    "DATABASE=AdventureWorks2022;"
-    "Trusted_Connection=yes;"
-    "TrustServerCertificate=yes;"       # local dev only
+    "SERVER=tcp:yourserver.database.windows.net,1433;"
+    "DATABASE=supportlab;"
+    f"UID={os.environ['SQL_USER']};"
+    f"PWD={os.environ['SQL_PASSWORD']};"
+    "Encrypt=yes;"                       # mandatory for Azure SQL, and the default in driver 18
+    "TrustServerCertificate=no;"         # verify the certificate — this is a real endpoint
+    "Connection Timeout=60;"             # long enough to survive a serverless resume
 )
 
 SQL = """
@@ -374,11 +378,21 @@ GROUP BY t.FailureCode
 ORDER BY Occurrences DESC;
 """
 
+customer_id = 1   # resolve this from the ticket; never hard-code it in real work
+
 with pyodbc.connect(CONN) as conn:
     cursor = conn.cursor()
-    for code, count in cursor.execute(SQL, 10, 29825, 7):
+    for code, count in cursor.execute(SQL, 10, customer_id, 7):
         print(f"{code:<20} {count}")
 ```
+
+:::hint{type=warning}
+Three Azure-specific details in that connection string, all of which produce confusing failures if you get them wrong:
+
+- **`Encrypt=yes`** is required. ODBC Driver 18 defaults to it; driver 17 did not, which is why an old script that worked locally fails against Azure with a TLS error.
+- **`TrustServerCertificate=no`** is correct here. Tutorials tell you to set it to `yes` — that is advice for a self-signed local certificate, and copying it to a cloud endpoint disables the check that would catch an interception.
+- **A short connection timeout will bite you.** If the database has auto-paused, the first connection has to wait for a resume. The default 15 seconds is often not enough, and the resulting error says nothing about pausing.
+:::
 
 :::hint{type=danger}
 Note the `?` placeholders. **Never** build SQL by string formatting user input — `f"WHERE CustomerId = {customer_id}"` is a SQL injection waiting to happen, even in an internal script. Parameterised queries are also faster, because SQL Server can reuse the cached plan.

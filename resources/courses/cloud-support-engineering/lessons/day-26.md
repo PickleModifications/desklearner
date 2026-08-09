@@ -328,7 +328,7 @@ Baseline practices:
 - [ ] Use shell-form `CMD`, time `docker stop`, switch to exec form, time it again
 - [ ] Write a compose file running your app plus SQL Server, with a healthcheck gate
 - [ ] Connect to the containerised SQL Server from Azure Data Studio
-- [ ] Restore AdventureWorks into it
+- [ ] Build the lab schema inside it by running your repo's `sql/schema/lab-seed.sql` — and note what you have to change, since there is no `SalesLT.Customer` to draw customer IDs from
 - [ ] Break the container in three ways (OOM, wrong bind address, buffered logs) and diagnose each
 - [ ] Scan the image and read the report
 - [ ] `docker compose down -v` and `docker system prune -a` to reclaim disk

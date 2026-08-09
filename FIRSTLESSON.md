@@ -6,12 +6,13 @@
 
 ## Week 1: SQL Server (T-SQL) + Git
 
-**Day 1 — SQL Server Setup + Fundamentals**
-- Install SQL Server Developer Edition (free) or use Azure SQL free tier; install SSMS and Azure Data Studio — get comfortable with both interfaces, since the JD names both
+**Day 1 — Azure SQL Setup + Fundamentals**
+- Provision an Azure SQL Database on the free offer, selecting `Sample` at creation so AdventureWorksLT (the `SalesLT` schema) is loaded with no `.bak` restore; install SSMS and Azure Data Studio — get comfortable with both interfaces, since the JD names both
+- Seed a `dbo.Transactions` lab table, because `SalesLT` is too small to teach dates or performance
 - T-SQL basics: SELECT, WHERE, ORDER BY, TOP (not LIMIT — this is a real syntax difference from MySQL/Postgres)
 
 **Day 2 — Joins**
-- INNER, LEFT, RIGHT, FULL joins in T-SQL, using a sample DB (Microsoft's AdventureWorks or WideWorldImporters are the standard practice DBs)
+- INNER, LEFT, RIGHT, FULL joins in T-SQL against the `SalesLT` schema — small enough to verify every result by eye
 - 15–20 join problems until automatic
 
 **Day 3 — Aggregation & Grouping**

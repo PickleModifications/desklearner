@@ -2,7 +2,7 @@
   "id": "cloud-support-engineering",
   "title": "Cloud Support Engineering",
   "subtitle": "SQL Server, Python, JSON Schema, AWS, Azure & the Microsoft stack",
-  "description": "A six-week, thirty-seven-lesson path from \"I can write a SELECT\" to \"I can diagnose a production incident on a Microsoft-stack cloud platform at 2am.\"\n\nThis course is built around the tools a **cloud support engineer** actually touches: SQL Server and T-SQL through SSMS and Azure Data Studio, Python as a diagnostic instrument rather than an application language, JSON Schema as an API contract, Git as a team workflow, CI/CD pipelines, structured logging and observability, and both AWS and Azure — including Azure AD / Entra ID.\n\nEvery chapter ends with a test, and the course ends with a final exam. Two portfolio projects are built along the way.",
+  "description": "A six-week, thirty-seven-lesson path from \"I can write a SELECT\" to \"I can diagnose a production incident on a Microsoft-stack cloud platform at 2am.\"\n\nThis course is built around the tools a **cloud support engineer** actually touches: Azure SQL and T-SQL through SSMS and Azure Data Studio — on a real cloud database seeded with Microsoft's AdventureWorksLT sample — Python as a diagnostic instrument rather than an application language, JSON Schema as an API contract, Git as a team workflow, CI/CD pipelines, structured logging and observability, and both AWS and Azure — including Azure AD / Entra ID.\n\nEvery chapter ends with a test, and the course ends with a final exam. Two portfolio projects are built along the way.",
   "version": "1.0.0",
   "author": "DeskLearner",
   "tags": ["SQL Server", "Python", "AWS", "Azure", "CI/CD", "Observability", "Support"],
@@ -14,10 +14,10 @@
       "title": "SQL Server & Git",
       "summary": "T-SQL from SELECT to execution plans, and Git as a team workflow rather than a save button.",
       "lessons": [
-        { "id": "day-01", "title": "SQL Server Setup & T-SQL Fundamentals", "file": "lessons/day-01.md", "minutes": 90 },
+        { "id": "day-01", "title": "Azure SQL Setup & T-SQL Fundamentals", "file": "lessons/day-01.md", "minutes": 90 },
         { "id": "day-02", "title": "Joins: Combining Tables Without Lying", "file": "lessons/day-02.md", "minutes": 100 },
         { "id": "day-03", "title": "Aggregation, Grouping & Subqueries", "file": "lessons/day-03.md", "minutes": 100 },
-        { "id": "day-04", "title": "Schema Design, Indexes & SSMS Tooling", "file": "lessons/day-04.md", "minutes": 110 },
+        { "id": "day-04", "title": "Schema Design, Indexes & Azure SQL Tooling", "file": "lessons/day-04.md", "minutes": 110 },
         { "id": "day-05", "title": "Git Beyond the Basics", "file": "lessons/day-05.md", "minutes": 100 },
         { "id": "day-06", "title": "Git Workflows: PRs, Bisect, Stash, Cherry-pick", "file": "lessons/day-06.md", "minutes": 130 },
         { "id": "day-07", "title": "Practice Day: Timed T-SQL & a Protected Repo", "file": "lessons/day-07.md", "minutes": 90 }

@@ -11,10 +11,10 @@
       "type": "single",
       "prompt": "Which T-SQL statement returns the ten most recent orders **deterministically**?",
       "options": [
-        "SELECT * FROM Sales.SalesOrderHeader LIMIT 10",
-        "SELECT TOP (10) * FROM Sales.SalesOrderHeader",
-        "SELECT TOP (10) * FROM Sales.SalesOrderHeader ORDER BY OrderDate DESC",
-        "SELECT * FROM Sales.SalesOrderHeader ORDER BY OrderDate DESC LIMIT 10"
+        "SELECT * FROM SalesLT.SalesOrderHeader LIMIT 10",
+        "SELECT TOP (10) * FROM SalesLT.SalesOrderHeader",
+        "SELECT TOP (10) * FROM SalesLT.SalesOrderHeader ORDER BY OrderDate DESC",
+        "SELECT * FROM SalesLT.SalesOrderHeader ORDER BY OrderDate DESC LIMIT 10"
       ],
       "answer": 2,
       "explanation": "LIMIT is not valid T-SQL — that is MySQL/PostgreSQL syntax. TOP without ORDER BY returns an arbitrary set of rows that can change when an index changes. Only TOP combined with ORDER BY is both valid and deterministic."

@@ -37,81 +37,81 @@ Set a visible timer. Ten minutes per problem, hard stop. If you have not solved 
 
 ## Part 1 — Twenty timed problems
 
-All against AdventureWorks. Target: 90 seconds for the first five, three minutes for the middle ten, ten minutes for the last five.
+Against your `supportlab` database. The catalogue and order questions use `SalesLT`; anything time-based or high-volume uses the `dbo.Transactions` table you seeded on Day 1. Target: 90 seconds for the first five, three minutes for the middle ten, ten minutes for the last five.
 
 ### Warm-up (target: 90 seconds each)
 
 :::checklist{title="Warm-up"}
-- [ ] 1. The 10 most recently modified people, showing full name and modified date
+- [ ] 1. The 10 most recently modified customers, showing full name and modified date
 - [ ] 2. Count of products per colour, excluding products with no colour
 - [ ] 3. All products priced between 100 and 500, most expensive first
-- [ ] 4. Distinct job titles in `HumanResources.Employee`, alphabetically
-- [ ] 5. Orders placed in December 2013, count only
+- [ ] 4. Distinct `CountryRegion` values in `SalesLT.Address`, alphabetically
+- [ ] 5. Failed transactions in the last 24 hours, count only
 :::
 
 ### Core (target: 3 minutes each)
 
 :::checklist{title="Core"}
-- [ ] 6. Each product with its subcategory and category name (three-table join)
-- [ ] 7. Products with no subcategory assigned
-- [ ] 8. Total revenue per year, with year-over-year row count
-- [ ] 9. The 10 customers with the highest lifetime spend
-- [ ] 10. Salespeople with no orders in 2013
-- [ ] 11. Average order value per territory, territories with fewer than 100 orders excluded
+- [ ] 6. Each product with its category and parent category name (three-table join)
+- [ ] 7. Products with no category assigned
+- [ ] 8. Transaction value per week for the last 90 days, with the row count beside it
+- [ ] 9. The 10 customers with the highest lifetime transaction value
+- [ ] 10. Customers in `SalesLT.Customer` with no transactions at all
+- [ ] 11. Average order value per `CountryRegion`, countries with fewer than 3 orders excluded
 - [ ] 12. Orders where the sum of line totals disagrees with the header `SubTotal`
-- [ ] 13. Products that have been ordered more than 500 times in total
-- [ ] 14. For each customer, their first and most recent order date, and the gap in days
-- [ ] 15. The count of orders per weekday name, most common first
+- [ ] 13. Products that appear on more than 5 order lines in total
+- [ ] 14. For each customer, their first and most recent transaction, and the gap in days
+- [ ] 15. The count of transactions per weekday name, most common first
 :::
 
 ### Stretch (target: 10 minutes each)
 
 :::checklist{title="Stretch"}
-- [ ] 16. The three highest-value orders **per territory** (window function)
-- [ ] 17. A monthly revenue table with a running cumulative total
-- [ ] 18. Customers whose 2013 spend was more than double their 2012 spend
-- [ ] 19. Month-over-month revenue change as an absolute figure and a percentage
-- [ ] 20. A single query returning, per month: order count, distinct customers, revenue, average order value, and the percentage of orders that shipped late
+- [ ] 16. The three highest-value orders **per country** (window function)
+- [ ] 17. A daily transaction-value table with a running cumulative total
+- [ ] 18. Customers whose spend in the last 30 days was more than double the 30 days before that
+- [ ] 19. Week-over-week failure-rate change as an absolute figure and a percentage
+- [ ] 20. A single query returning, per day: transaction count, distinct customers, total value, average value, and the percentage that failed
 :::
 
-:::details{summary="Worked answer — #16, top three per territory"}
+:::details{summary="Worked answer — #16, top three per country"}
 ```sql
 WITH Ranked AS (
-    SELECT   soh.TerritoryID,
-             st.Name AS TerritoryName,
+    SELECT   a.CountryRegion,
              soh.SalesOrderID,
              soh.TotalDue,
              ROW_NUMBER() OVER (
-                 PARTITION BY soh.TerritoryID
+                 PARTITION BY a.CountryRegion
                  ORDER BY     soh.TotalDue DESC
              ) AS rn
-    FROM     Sales.SalesOrderHeader AS soh
-    JOIN     Sales.SalesTerritory   AS st ON st.TerritoryID = soh.TerritoryID
+    FROM     SalesLT.SalesOrderHeader AS soh
+    JOIN     SalesLT.Address          AS a ON a.AddressID = soh.ShipToAddressID
 )
-SELECT TerritoryName, SalesOrderID, TotalDue
+SELECT CountryRegion, SalesOrderID, TotalDue
 FROM   Ranked
 WHERE  rn <= 3
-ORDER BY TerritoryName, rn;
+ORDER BY CountryRegion, rn;
 ```
 
 The pattern — CTE, `ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)`, filter on the rank — solves an entire family of questions. Memorise the shape, not this query.
 :::
 
-:::details{summary="Worked answer — #20, the kitchen-sink monthly query"}
+:::details{summary="Worked answer — #20, the kitchen-sink daily query"}
 ```sql
-SELECT   DATEFROMPARTS(YEAR(soh.OrderDate), MONTH(soh.OrderDate), 1) AS MonthStart,
-         COUNT(*)                                    AS Orders,
-         COUNT(DISTINCT soh.CustomerID)              AS Customers,
-         SUM(soh.TotalDue)                           AS Revenue,
-         AVG(soh.TotalDue)                           AS AvgOrderValue,
-         100.0 * SUM(CASE WHEN soh.ShipDate > DATEADD(DAY, 7, soh.OrderDate)
-                          THEN 1 ELSE 0 END) / COUNT(*) AS PctShippedLate
-FROM     Sales.SalesOrderHeader AS soh
-GROUP BY DATEFROMPARTS(YEAR(soh.OrderDate), MONTH(soh.OrderDate), 1)
-ORDER BY MonthStart;
+SELECT   CAST(t.CreatedAtUtc AS DATE)          AS [Day],
+         COUNT(*)                              AS Transactions,
+         COUNT(DISTINCT t.CustomerId)          AS Customers,
+         SUM(t.Amount)                         AS TotalValue,
+         AVG(t.Amount)                         AS AvgValue,
+         100.0 * SUM(CASE WHEN t.Status = 'Failed' THEN 1 ELSE 0 END)
+               / COUNT(*)                      AS PctFailed
+FROM     dbo.Transactions AS t
+WHERE    t.CreatedAtUtc >= DATEADD(DAY, -90, SYSUTCDATETIME())
+GROUP BY CAST(t.CreatedAtUtc AS DATE)
+ORDER BY [Day];
 ```
 
-Two details worth stealing: `DATEFROMPARTS` gives a sortable month bucket rather than separate year/month integers, and `100.0 *` forces float division — `100 * 1 / 4` is `0` in integer arithmetic, which is a silent, very common bug.
+Two details worth stealing: casting to `DATE` gives a sortable day bucket rather than separate year/month/day integers, and `100.0 *` forces float division — `100 * 1 / 4` is `0` in integer arithmetic, which is a silent, very common bug. Also note that the `WHERE` clause here is deliberately *not* SARGable-hostile: the filter is on the raw column, and only the `GROUP BY` casts.
 :::
 
 ## Part 2 — Build the course repository
@@ -144,7 +144,7 @@ Everything you produce for the rest of this course goes in one repo. Set it up p
    | Path | Contents |
    |---|---|
    | `sql/queries/` | Diagnostic and reporting queries, one file per question |
-   | `sql/schema/`  | DDL for the ticket-ingestion project |
+   | `sql/schema/`  | DDL for the ticket-ingestion project, plus `lab-seed.sql` |
    | `python/`      | Log parsing, API clients, schema validation |
    | `schemas/`     | JSON Schema documents |
    | `docs/`        | Architecture notes and incident write-ups |
@@ -201,7 +201,7 @@ Rate yourself 1–5 on each. Anything at 3 or below gets fifteen minutes tomorro
 :::
 
 :::hint{type=success}
-If you got through Week 1, you now have a real database on your machine, twenty working diagnostic queries, and a properly-configured repository with a protected branch. That is more concrete evidence of capability than most candidates bring to an interview.
+If you got through Week 1, you have a real Azure SQL database, a lab dataset you can rebuild from a script in source control, twenty working diagnostic queries, and a properly-configured repository with a protected branch. That is more concrete evidence of capability than most candidates bring to an interview.
 :::
 
 ## Where this is going

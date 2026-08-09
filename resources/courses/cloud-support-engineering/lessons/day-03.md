@@ -51,24 +51,28 @@ Almost every confusing error message in T-SQL is explained by this diagram:
 
 ## The aggregate functions
 
+Today's examples run against `dbo.Transactions` — the table you seeded on Day 1. `SalesLT.SalesOrderHeader` has thirty-two rows sharing a single order date, which is fine for join shapes and hopeless for aggregation: every `GROUP BY` on a date returns one row.
+
 ```sql title="aggregates.sql"
-SELECT COUNT(*)               AS TotalRows,
-       COUNT(ShipDate)        AS RowsWithShipDate,   -- NULLs are NOT counted
-       COUNT(DISTINCT CustomerID) AS UniqueCustomers,
-       SUM(TotalDue)          AS Revenue,
-       AVG(TotalDue)          AS AverageOrder,
-       MIN(OrderDate)         AS FirstOrder,
-       MAX(OrderDate)         AS LatestOrder
-FROM   Sales.SalesOrderHeader;
+SELECT COUNT(*)                   AS TotalRows,
+       COUNT(FailureCode)         AS RowsWithFailureCode,   -- NULLs are NOT counted
+       COUNT(DISTINCT CustomerId) AS UniqueCustomers,
+       SUM(Amount)                AS TotalValue,
+       AVG(Amount)                AS AverageTransaction,
+       MIN(CreatedAtUtc)          AS Oldest,
+       MAX(CreatedAtUtc)          AS Newest
+FROM   dbo.Transactions;
 ```
 
 :::hint{type=warning}
 `COUNT(*)` counts rows. `COUNT(column)` counts **non-NULL values** in that column. The difference between those two numbers is exactly the count of NULLs, which makes it a one-line data-quality check:
 
 ```sql
-SELECT COUNT(*) - COUNT(ShipDate) AS UnshippedOrders
-FROM   Sales.SalesOrderHeader;
+SELECT COUNT(*) - COUNT(FailureCode) AS SuccessfulTransactions
+FROM   dbo.Transactions;
 ```
+
+Run it, then cross-check against `SUM(CASE WHEN Status = 'Succeeded' THEN 1 ELSE 0 END)`. If the two numbers disagree, you have found rows where the status and the failure code contradict each other — which, in a real system, is a genuine data-integrity finding and not a mistake in your query.
 :::
 
 `AVG` also ignores NULLs, which is usually what you want but occasionally is not. If a NULL means "zero" in your domain, `AVG(col)` and `AVG(ISNULL(col, 0))` give different answers, and only one of them is right.
@@ -78,14 +82,13 @@ FROM   Sales.SalesOrderHeader;
 ## GROUP BY
 
 ```sql title="group-by.sql"
-SELECT   YEAR(soh.OrderDate)  AS OrderYear,
-         MONTH(soh.OrderDate) AS OrderMonth,
-         COUNT(*)             AS OrderCount,
-         SUM(soh.TotalDue)    AS Revenue
-FROM     Sales.SalesOrderHeader AS soh
-WHERE    soh.OrderDate >= '2013-01-01'
-GROUP BY YEAR(soh.OrderDate), MONTH(soh.OrderDate)
-ORDER BY OrderYear, OrderMonth;
+SELECT   CAST(t.CreatedAtUtc AS DATE) AS [Day],
+         COUNT(*)                     AS TransactionCount,
+         SUM(t.Amount)                AS Value
+FROM     dbo.Transactions AS t
+WHERE    t.CreatedAtUtc >= DATEADD(DAY, -30, SYSUTCDATETIME())
+GROUP BY CAST(t.CreatedAtUtc AS DATE)
+ORDER BY [Day];
 ```
 
 Rule: **every column in `SELECT` must either be in `GROUP BY` or wrapped in an aggregate.** No exceptions in T-SQL (unlike MySQL, which historically allowed it and produced arbitrary values — another dialect difference worth knowing).
@@ -94,28 +97,29 @@ Rule: **every column in `SELECT` must either be in `GROUP BY` or wrapped in an a
 
 ```sql title="where-vs-having.sql"
 SELECT   c.CustomerID,
-         COUNT(*)          AS OrderCount,
-         SUM(o.TotalDue)   AS Spend
-FROM     Sales.SalesOrderHeader AS o
-JOIN     Sales.Customer AS c ON c.CustomerID = o.CustomerID
-WHERE    o.OrderDate >= '2013-01-01'      -- filters rows, before grouping
-GROUP BY c.CustomerID
-HAVING   COUNT(*) >= 5                     -- filters groups, after grouping
-     AND SUM(o.TotalDue) > 10000
+         c.CompanyName,
+         COUNT(*)       AS TransactionCount,
+         SUM(t.Amount)  AS Spend
+FROM     dbo.Transactions AS t
+JOIN     SalesLT.Customer AS c ON c.CustomerID = t.CustomerId
+WHERE    t.CreatedAtUtc >= DATEADD(DAY, -30, SYSUTCDATETIME())  -- filters rows, before grouping
+GROUP BY c.CustomerID, c.CompanyName
+HAVING   COUNT(*) >= 50                                          -- filters groups, after grouping
+     AND SUM(t.Amount) > 10000
 ORDER BY Spend DESC;
 ```
 
 The practical guidance: **if the condition could be checked by looking at a single row, it belongs in `WHERE`.** `WHERE` runs first, so it reduces the volume the grouping has to chew through — it is both more correct and faster.
 
 ```quiz
-question: You want customers whose 2013 spend exceeds £10,000. Where does the OrderDate filter go, and where does the spend filter go?
+question: You want customers whose spend over the last 30 days exceeds £10,000. Where does the date filter go, and where does the spend filter go?
 options:
   - Both in WHERE
   - Both in HAVING
   - OrderDate in WHERE, spend in HAVING
   - OrderDate in HAVING, spend in WHERE
 answer: 2
-explanation: OrderDate is a property of an individual row, so it filters before grouping in WHERE. Total spend is an aggregate that only exists after GROUP BY, so it must be filtered in HAVING.
+explanation: The timestamp is a property of an individual row, so it filters before grouping in WHERE. Total spend is an aggregate that only exists after GROUP BY, so it must be filtered in HAVING.
 ```
 
 ## Subqueries
@@ -123,38 +127,40 @@ explanation: OrderDate is a property of an individual row, so it filters before 
 ### Scalar subquery — returns one value
 
 ```sql title="scalar-subquery.sql"
-SELECT   soh.SalesOrderID,
-         soh.TotalDue,
-         (SELECT AVG(TotalDue) FROM Sales.SalesOrderHeader) AS OverallAverage
-FROM     Sales.SalesOrderHeader AS soh
-WHERE    soh.TotalDue > (SELECT AVG(TotalDue) FROM Sales.SalesOrderHeader);
+SELECT   TOP (100)
+         t.TransactionId,
+         t.Amount,
+         (SELECT AVG(Amount) FROM dbo.Transactions) AS OverallAverage
+FROM     dbo.Transactions AS t
+WHERE    t.Amount > (SELECT AVG(Amount) FROM dbo.Transactions)
+ORDER BY t.Amount DESC;
 ```
 
 ### Correlated subquery — references the outer row
 
 ```sql title="correlated.sql"
--- Orders that are the largest that customer has ever placed
-SELECT o.SalesOrderID, o.CustomerID, o.TotalDue
-FROM   Sales.SalesOrderHeader AS o
-WHERE  o.TotalDue = (
-         SELECT MAX(inner_o.TotalDue)
-         FROM   Sales.SalesOrderHeader AS inner_o
-         WHERE  inner_o.CustomerID = o.CustomerID   -- the correlation
+-- Transactions that are the largest that customer has ever made
+SELECT t.TransactionId, t.CustomerId, t.Amount
+FROM   dbo.Transactions AS t
+WHERE  t.Amount = (
+         SELECT MAX(inner_t.Amount)
+         FROM   dbo.Transactions AS inner_t
+         WHERE  inner_t.CustomerId = t.CustomerId   -- the correlation
        );
 ```
 
-Correlated subqueries are conceptually a loop. The optimiser usually rewrites them into something smarter, but if you see one running slowly over millions of rows, that is your first suspect.
+Correlated subqueries are conceptually a loop. The optimiser usually rewrites them into something smarter, but if you see one running slowly over millions of rows, that is your first suspect. Run this one with the actual execution plan on — 200,000 rows is enough that you can watch it do real work, which is exactly why the lab table exists.
 
 ### CTEs — subqueries with names
 
 ```sql title="cte.sql"
 WITH CustomerSpend AS (
-    SELECT   CustomerID,
-             COUNT(*)        AS OrderCount,
-             SUM(TotalDue)   AS Spend
-    FROM     Sales.SalesOrderHeader
-    WHERE    OrderDate >= '2013-01-01'
-    GROUP BY CustomerID
+    SELECT   CustomerId,
+             COUNT(*)      AS TransactionCount,
+             SUM(Amount)   AS Spend
+    FROM     dbo.Transactions
+    WHERE    CreatedAtUtc >= DATEADD(DAY, -30, SYSUTCDATETIME())
+    GROUP BY CustomerId
 ),
 Ranked AS (
     SELECT *,
@@ -179,20 +185,22 @@ Prefer CTEs over nested subqueries once you have more than one level. A query yo
 
 ```sql title="top-n-per-group.sql"
 WITH Ranked AS (
-    SELECT   o.CustomerID,
-             o.SalesOrderID,
-             o.OrderDate,
-             o.TotalDue,
+    SELECT   t.CustomerId,
+             t.TransactionId,
+             t.CreatedAtUtc,
+             t.FailureCode,
+             t.Amount,
              ROW_NUMBER() OVER (
-                 PARTITION BY o.CustomerID
-                 ORDER BY     o.OrderDate DESC
+                 PARTITION BY t.CustomerId
+                 ORDER BY     t.CreatedAtUtc DESC
              ) AS rn
-    FROM     Sales.SalesOrderHeader AS o
+    FROM     dbo.Transactions AS t
+    WHERE    t.Status = 'Failed'
 )
-SELECT CustomerID, SalesOrderID, OrderDate, TotalDue
+SELECT CustomerId, TransactionId, CreatedAtUtc, FailureCode, Amount
 FROM   Ranked
 WHERE  rn <= 3
-ORDER BY CustomerID, rn;
+ORDER BY CustomerId, rn;
 ```
 
 `PARTITION BY` is "restart the numbering for each of these." `ORDER BY` inside `OVER` decides what "first" means.
@@ -208,26 +216,32 @@ Three ranking functions worth knowing the difference between, because it is a st
 Running totals use the same mechanism:
 
 ```sql title="running-total.sql"
-SELECT   OrderDate,
-         TotalDue,
-         SUM(TotalDue) OVER (ORDER BY OrderDate
-                             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
-FROM     Sales.SalesOrderHeader
-WHERE    CustomerID = 29825
-ORDER BY OrderDate;
+WITH Daily AS (
+    SELECT   CAST(CreatedAtUtc AS DATE) AS [Day],
+             SUM(Amount)                AS DailyValue
+    FROM     dbo.Transactions
+    WHERE    CreatedAtUtc >= DATEADD(DAY, -30, SYSUTCDATETIME())
+    GROUP BY CAST(CreatedAtUtc AS DATE)
+)
+SELECT   [Day],
+         DailyValue,
+         SUM(DailyValue) OVER (ORDER BY [Day]
+                               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
+FROM     Daily
+ORDER BY [Day];
 ```
 
 ## The real skill: ticket → query
 
 A support ticket says:
 
-> *"Customer 29825 says their payments have been failing since Tuesday. Can you check?"*
+> *"Our oldest ordering customer says their payments have been failing since Tuesday. Can you check?"*
 
 That is not a query. Turning it into one means making four decisions explicit:
 
 :::steps
 
-1. **Which entity?** Customer 29825 — is that a `CustomerID`, an account number, or an external reference? Confirm before you filter on it.
+1. **Which entity?** Whatever identifier the ticket gives you — is it a `CustomerID`, an account number, or an external reference from another system? Confirm before you filter on it. Here we resolve it with a query rather than pasting a number we have not verified.
 
 2. **What is a "failure"?** A status column? An error code? A missing downstream record? "Failed" is domain vocabulary, not a schema column. Find the actual representation.
 
@@ -239,8 +253,11 @@ That is not a query. Turning it into one means making four decisions explicit:
 
 Here is the query that actually answers it:
 
+This one runs against your lab data as-is — the Day 1 seed script planted the incident deliberately.
+
 ```sql title="incident-triage.sql"
-DECLARE @CustomerId INT = 29825;
+-- Resolve the identifier rather than trusting the one in the ticket.
+DECLARE @CustomerId INT = (SELECT MIN(CustomerID) FROM SalesLT.SalesOrderHeader);
 DECLARE @Since DATETIME2 = DATEADD(DAY, -10, SYSUTCDATETIME());
 
 -- 1. Shape of the problem: failures vs successes per day
@@ -280,27 +297,29 @@ WHERE    t.CreatedAtUtc >= @Since
 Query 3 is the one that separates a support engineer from someone who can write SQL. **Always check the blast radius.** If one customer is affected, it is a configuration or data problem. If two hundred are, you should be escalating, not investigating.
 :::
 
+Run all three and read what the lab data tells you. Query 1 shows this customer's failure rate climbing sharply about four days ago. Query 2 attributes essentially all of it to `GATEWAY_TIMEOUT`. Query 3 is the one that changes the conclusion: `GATEWAY_TIMEOUT` also appears across hundreds of other customers at a low, flat background rate. So there is a real gateway fault *and* something specific to this customer on top of it — which is a more interesting and much more realistic answer than either query alone would have given you.
+
 `SUM(CASE WHEN … THEN 1 ELSE 0 END)` is the conditional-aggregation idiom. It lets you produce several differently-filtered counts in a single pass over the data instead of running three queries. Learn it; you will type it weekly.
 
 ## Exercise
 
 :::checklist{title="Day 3 drills"}
-- [ ] Orders per month for 2013, with revenue, sorted chronologically
-- [ ] Customers with more than 5 orders, showing count and total spend
-- [ ] The single largest order per territory (window function)
-- [ ] Products whose average review rating is below 3, with the review count
-- [ ] Count of NULL `ShipDate` rows, computed with `COUNT(*) - COUNT(col)`
-- [ ] A conditional-aggregation query producing three status counts in one pass
-- [ ] Running total of daily revenue across a month
+- [ ] Transactions per day for the last 30 days, with total value, sorted chronologically
+- [ ] Customers with more than 50 transactions, showing count and total spend
+- [ ] The single largest transaction per customer (window function)
+- [ ] Average `ListPrice` per `SalesLT.ProductCategory`, categories with fewer than 5 products excluded
+- [ ] Count of NULL `FailureCode` rows, computed with `COUNT(*) - COUNT(col)`
+- [ ] A conditional-aggregation query producing per-day counts of each failure code in one pass
+- [ ] Running total of daily transaction value across the last 30 days
 - [ ] Rewrite one of your nested subqueries as a CTE and confirm the results match
-- [ ] Write the three-query incident-triage set above against AdventureWorks tables of your choosing
+- [ ] Run the three-query incident-triage set above and write a two-sentence conclusion, as if closing the ticket
 :::
 
 :::details{summary="Common mistake: HAVING without GROUP BY"}
 `HAVING` without `GROUP BY` is legal — it treats the whole result as one group:
 
 ```sql
-SELECT COUNT(*) FROM Sales.SalesOrderHeader HAVING COUNT(*) > 1000;
+SELECT COUNT(*) FROM dbo.Transactions HAVING COUNT(*) > 1000;
 ```
 
 This returns the count if it exceeds 1000, and no rows otherwise. Occasionally useful for assertions in scripts. Usually a sign someone meant `WHERE`.

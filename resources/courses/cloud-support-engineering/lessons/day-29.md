@@ -95,9 +95,10 @@ Common gaps at this point, with quick fixes:
 Regardless of track, spend thirty minutes proving everything still works. Four weeks of labs accumulate rot — expired credentials, deleted resources, broken scripts.
 
 :::checklist{title="Toolchain verification"}
-- [ ] SQL Server running; `SELECT @@VERSION` returns
+- [ ] Azure SQL database online; `SELECT @@VERSION` returns (allow a minute if it auto-paused)
+- [ ] Your current client IP is still on the logical server firewall — home IPs change
 - [ ] SSMS and Azure Data Studio both connect
-- [ ] AdventureWorks queryable
+- [ ] `SalesLT` queryable, and `dbo.Transactions` still has its rows
 - [ ] `git status` clean; `git push` works
 - [ ] CI pipeline green on `main`
 - [ ] `aws sts get-caller-identity` returns your identity

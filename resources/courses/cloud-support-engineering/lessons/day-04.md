@@ -1,13 +1,14 @@
 ---
-title: Schema Design, Indexes & SSMS Tooling
-summary: Keys, normalisation and indexes — then real time inside SSMS reading execution plans, because tool fluency is half the job.
+title: Schema Design, Indexes & Azure SQL Tooling
+summary: Keys, normalisation and indexes — then real time reading execution plans, plus the DMVs that replace Activity Monitor on a managed database, because tool fluency is half the job.
 minutes: 110
 objectives:
   - Explain primary keys, foreign keys and the referential integrity they enforce
   - Normalise a denormalised table to third normal form and say why you might deliberately stop short
   - Describe the difference between a clustered and a non-clustered index
   - Read an actual execution plan and identify a scan, a seek, and a missing-index warning
-  - Navigate SSMS Object Explorer, the query designer, and Activity Monitor without hunting
+  - Navigate SSMS Object Explorer and the query designer without hunting, and know which nodes Azure SQL disables
+  - Use sys.dm_exec_requests, sys.dm_db_resource_stats and Query Store in place of Activity Monitor
 keyTerms:
   - term: Primary key
     definition: The column (or columns) that uniquely identifies a row. Implies NOT NULL and unique, and creates a clustered index by default in SQL Server.
@@ -143,17 +144,17 @@ CREATE NONCLUSTERED INDEX IX_Tickets_CustomerId
 
 ```sql title="sargable.sql"
 -- NOT SARGable: the column is wrapped in a function, so the index is useless
-WHERE YEAR(o.OrderDate) = 2013
+WHERE CAST(t.CreatedAtUtc AS DATE) = '2025-06-01'
 
 -- SARGable: the engine can seek to a range
-WHERE o.OrderDate >= '2013-01-01'
-  AND o.OrderDate <  '2014-01-01'
+WHERE t.CreatedAtUtc >= '2025-06-01'
+  AND t.CreatedAtUtc <  '2025-06-02'
 
 -- NOT SARGable
-WHERE LEFT(c.AccountNumber, 3) = 'AW0'
+WHERE LEFT(t.FailureCode, 7) = 'GATEWAY'
 
 -- SARGable
-WHERE c.AccountNumber LIKE 'AW0%'
+WHERE t.FailureCode LIKE 'GATEWAY%'
 ```
 
 :::hint{type=danger}
@@ -164,7 +165,9 @@ Implicit conversion causes the same problem invisibly. If a column is `VARCHAR` 
 
 ## Reading an execution plan
 
-This is the part to spend real time on. In SSMS:
+This is the part to spend real time on — and the reason Day 1 had you seed 200,000 synthetic rows. `SalesLT` is too small to teach it: with 295 products and 32 orders, every plan is a scan, every scan is instant, and the optimiser is right to ignore every index you build. Performance work needs a table where the wrong plan actually hurts.
+
+In SSMS:
 
 - <kbd>Ctrl</kbd>+<kbd>L</kbd> — **estimated** plan (does not run the query)
 - <kbd>Ctrl</kbd>+<kbd>M</kbd> — include **actual** plan (runs it, shows real row counts)
@@ -188,43 +191,74 @@ Read plans **right to left, top to bottom** — that is the direction data flows
 :::
 
 ```sql title="plan-experiment.sql"
+-- First give the engine an index it *could* use.
+CREATE NONCLUSTERED INDEX IX_Transactions_CreatedAtUtc
+    ON dbo.Transactions (CreatedAtUtc)
+    INCLUDE (Status, Amount);
+GO
+
 SET STATISTICS IO, TIME ON;
 GO
 
+DECLARE @Day DATE = CAST(DATEADD(DAY, -3, SYSUTCDATETIME()) AS DATE);
+
 -- Run this with the actual plan on (Ctrl+M), note the logical reads.
-SELECT   soh.SalesOrderID, soh.OrderDate, soh.TotalDue
-FROM     Sales.SalesOrderHeader AS soh
-WHERE    YEAR(soh.OrderDate) = 2013;
+SELECT   t.TransactionId, t.CreatedAtUtc, t.Amount
+FROM     dbo.Transactions AS t
+WHERE    CAST(t.CreatedAtUtc AS DATE) = @Day;
 
 -- Now the SARGable version. Compare the plan shape and the logical reads.
-SELECT   soh.SalesOrderID, soh.OrderDate, soh.TotalDue
-FROM     Sales.SalesOrderHeader AS soh
-WHERE    soh.OrderDate >= '2013-01-01'
-  AND    soh.OrderDate <  '2014-01-01';
+SELECT   t.TransactionId, t.CreatedAtUtc, t.Amount
+FROM     dbo.Transactions AS t
+WHERE    t.CreatedAtUtc >= @Day
+  AND    t.CreatedAtUtc <  DATEADD(DAY, 1, @Day);
 GO
 
 SET STATISTICS IO, TIME OFF;
 ```
 
+Same rows, both times. The first query scans the whole index; the second seeks straight to a range. Write down both logical-read numbers — that ratio is the entire argument for SARGability, and it is a far more persuasive thing to say in an interview than the definition.
+
 `SET STATISTICS IO ON` prints **logical reads** — the number of 8 KB pages touched. It is a far better performance metric than elapsed time, because it is not affected by cache warmth or what else the server is doing. When you tune a query, logical reads is the number you should watch go down.
 
-## SSMS fluency
+## Tool fluency against Azure SQL
 
-Spend twenty minutes deliberately exploring. The job description names this tool; being visibly at home in it matters.
+Spend twenty minutes deliberately exploring. The job description names these tools; being visibly at home in them matters.
 
 | Where | What it gives you |
 |---|---|
 | **Object Explorer** → database → Tables → columns/keys/indexes | Schema without writing a query |
 | **Object Explorer Details** (<kbd>F7</kbd>) | Sortable grid of objects — find the biggest table fast |
 | Right-click table → **Script Table as** → CREATE To | The exact DDL, including every constraint and index |
-| **Activity Monitor** (right-click server) | Live sessions, waits, expensive recent queries |
 | Right-click database → **Reports** → Standard Reports | Disk usage, index usage, top queries — no scripting needed |
 | **Query Designer** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd>) | Build a join visually; useful on an unfamiliar schema |
 | **Templates Explorer** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>) | Parameterised DDL boilerplate |
-| **Registered Servers** | Save connections; run one query across several servers |
+
+:::hint{type=warning}
+**Activity Monitor does not work against Azure SQL Database**, and neither do the Agent, Backup or Maintenance Plan nodes. You are a tenant on a managed service, not an administrator of a host. The replacements are better anyway, and they are what a cloud support engineer actually reaches for:
+
+```sql title="whats-happening-now.sql"
+-- What is executing right now, and what is it waiting on?
+SELECT   r.session_id, r.status, r.wait_type, r.wait_time,
+         r.cpu_time, r.total_elapsed_time, t.text
+FROM     sys.dm_exec_requests AS r
+CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) AS t
+WHERE    r.session_id <> @@SPID;
+
+-- Am I hitting the service-tier ceiling? This is the Azure-specific one,
+-- and it is the first query to run when a customer says "it went slow at 2pm".
+SELECT   TOP (60) end_time,
+         avg_cpu_percent, avg_data_io_percent,
+         avg_log_write_percent, max_worker_percent
+FROM     sys.dm_db_resource_stats
+ORDER BY end_time DESC;
+```
+
+`sys.dm_db_resource_stats` samples every 15 seconds and keeps about an hour. Sustained values near 100% mean the database is **throttled** — the query is not slow, the tier is too small. Distinguishing those two is a large fraction of real Azure SQL support work.
+:::
 
 :::hint{type=tip}
-Turn on line numbers (Tools → Options → Text Editor → Transact-SQL → General) and enable **SQLCMD mode** awareness. Also learn <kbd>Ctrl</kbd>+<kbd>R</kbd> — toggles the results pane, which doubles your editor space when composing a long query.
+Turn on **Query Store** insights in the portal (database → Query Performance Insight) and in SSMS (database → Query Store → Top Resource Consuming Queries). Query Store is on by default in Azure SQL, it survives restarts and failovers, and it answers "what changed?" — which Activity Monitor never could, because it only ever showed you *now*. We come back to it on Day 25.
 :::
 
 ## Exercise
@@ -233,11 +267,12 @@ Turn on line numbers (Tools → Options → Text Editor → Transact-SQL → Gen
 - [ ] Create a `Tickets` table with a primary key, a foreign key, and a default constraint
 - [ ] Deliberately violate the foreign key and read the exact error message the engine returns
 - [ ] Take a denormalised flat table and split it into 3NF on paper, then in SQL
-- [ ] Run the `YEAR()` vs range-predicate experiment and record logical reads for both
-- [ ] Find a query in AdventureWorks that produces a Clustered Index Scan; make it a Seek by adding an index
+- [ ] Run the `CAST()` vs range-predicate experiment on `dbo.Transactions` and record logical reads for both
+- [ ] Find a query on `dbo.Transactions` that produces a Clustered Index Scan; make it a Seek by adding an index
 - [ ] Read one actual execution plan end to end and write a sentence about the widest arrow
-- [ ] Use Activity Monitor to identify the most expensive recent query on your instance
-- [ ] Script a table as CREATE and read every constraint it generated
+- [ ] Use `sys.dm_exec_requests` and Query Store to identify the most expensive recent query on your database
+- [ ] Check `sys.dm_db_resource_stats` while a large query runs, and watch the IO percentage move
+- [ ] Script `SalesLT.SalesOrderDetail` as CREATE and read every constraint it generated
 :::
 
 :::details{summary="Where did my index go? A checklist"}
