@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { getHighlighter, resolveLang, THEMES } from '../highlighter'
+import { useNearViewport } from '@/hooks/useNearViewport'
 import { useUi } from '@/stores/ui'
 
 const LABELS: Record<string, string> = {
@@ -29,8 +30,14 @@ export function CodeBlock({
   const [html, setHtml] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const resolved = resolveLang(lang)
+  // Highlighting every block of a long lesson up front is what makes the first
+  // paint — and the DOM the browser then has to scroll — expensive. The plain
+  // fallback below is styled identically, so swapping it in later costs no
+  // reflow beyond the block itself.
+  const { ref, near } = useNearViewport()
 
   useEffect(() => {
+    if (!near) return
     let cancelled = false
     void getHighlighter()
       .then((hl) =>
@@ -48,7 +55,7 @@ export function CodeBlock({
     return () => {
       cancelled = true
     }
-  }, [code, resolved, isDark])
+  }, [code, resolved, isDark, near])
 
   const copy = async (): Promise<void> => {
     await navigator.clipboard.writeText(code)
@@ -59,7 +66,7 @@ export function CodeBlock({
   const label = title ?? LABELS[resolved] ?? resolved.toUpperCase()
 
   return (
-    <div className="code-block">
+    <div className="code-block" ref={ref}>
       <div className="code-block__bar">
         <span className="truncate">{label}</span>
         <button

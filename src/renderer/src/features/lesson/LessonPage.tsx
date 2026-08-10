@@ -36,7 +36,10 @@ export function LessonPage(): React.JSX.Element {
   const index = useContent((s) => s.index)
   const pack = findCoursePack(index, courseId)
 
-  const progress = useProgress((s) => s.state)
+  // Subscribing to the whole progress state would re-render the reader — and
+  // everything under it — every time any lesson's progress is written. Only this
+  // lesson's entry matters here, and its identity is stable until it changes.
+  const entry = useProgress((s) => getLesson(s.state, courseId, chapterId, lessonId))
   const openLesson = useProgress((s) => s.openLesson)
   const setStatus = useProgress((s) => s.setStatus)
   const setScroll = useProgress((s) => s.setScroll)
@@ -55,7 +58,6 @@ export function LessonPage(): React.JSX.Element {
   const [articleEl, setArticleEl] = useState<HTMLElement | null>(null)
   const restored = useRef('')
 
-  const entry = getLesson(progress, courseId, chapterId, lessonId)
   const headings = useHeadings(articleEl, doc?.markdown)
 
   useLessonTimer(courseId, chapterId, lessonId)
@@ -106,22 +108,34 @@ export function LessonPage(): React.JSX.Element {
     return
   }, [scrollEl, doc, key, entry.scroll])
 
+  // Reading scroll metrics forces layout and writing the position re-renders the
+  // page, so neither happens while the wheel is moving: the handler only resets
+  // a timer, and the position is measured and stored once scrolling settles.
   useEffect(() => {
     if (!scrollEl) return
-    let frame = 0
-    const onScroll = (): void => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const max = scrollEl.scrollHeight - scrollEl.clientHeight
-        setScroll(courseId, chapterId, lessonId, max > 0 ? scrollEl.scrollTop / max : 0)
-      })
+    let idle: ReturnType<typeof setTimeout> | undefined
+
+    const store = (): void => {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight
+      // Nothing to record before the lesson has been restored, or while it is
+      // still short enough to fit — writing 0 then would lose the saved position.
+      if (max <= 0 || restored.current !== key) return
+      setScroll(courseId, chapterId, lessonId, scrollEl.scrollTop / max)
     }
+
+    const onScroll = (): void => {
+      clearTimeout(idle)
+      idle = setTimeout(store, 400)
+    }
+
     scrollEl.addEventListener('scroll', onScroll, { passive: true })
     return () => {
-      cancelAnimationFrame(frame)
+      clearTimeout(idle)
       scrollEl.removeEventListener('scroll', onScroll)
+      // Leaving mid-scroll still has to record where the learner got to.
+      store()
     }
-  }, [scrollEl, courseId, chapterId, lessonId, setScroll])
+  }, [scrollEl, courseId, chapterId, lessonId, key, setScroll])
 
   /* ----------------------------------------------------------- navigation */
 

@@ -47,7 +47,12 @@ function createWindow(): void {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
-      spellcheck: true
+      spellcheck: true,
+      // The smoke run asserts on viewport-dependent rendering — lazily
+      // highlighted code, sections the reader skips while off screen — which
+      // Chromium stops updating as soon as the window is occluded by whatever
+      // terminal the run was started from.
+      backgroundThrottling: !process.env['DESKLEARNER_SMOKE']
     }
   })
 
@@ -137,10 +142,36 @@ async function runSmokeTest(win: BrowserWindow): Promise<void> {
     /^[1-9]\d{3,}$/
   )
   await check('objectives block renders', hasText('By the end of this lesson'), /true/)
+
+  // The reader only lays out and highlights what is near the viewport, so walk
+  // down the lesson before asserting on content further in. This doubles as the
+  // check that virtualised sections do materialise as they are scrolled to.
+  for (let step = 1; step <= 12; step++) {
+    const ratio = step / 12
+    await win.webContents.executeJavaScript(
+      `(() => {
+        const el = [...document.querySelectorAll('.scroll-area')]
+          .find((node) => node.querySelector('.markdown'))
+        if (el) el.scrollTop = (el.scrollHeight - el.clientHeight) * ${ratio}
+        return el ? el.scrollTop : -1
+      })()`
+    )
+    await new Promise((r) => setTimeout(r, 350))
+  }
+  await waitFor(
+    `document.querySelectorAll(".code-block").length ===
+       document.querySelectorAll(".code-block .shiki").length`
+  )
   await check(
     'shiki highlighted a code block',
     'document.querySelectorAll(".code-block .shiki").length',
     /^[1-9]/
+  )
+  await check(
+    'every code block was highlighted after scrolling',
+    `document.querySelectorAll(".code-block").length -
+       document.querySelectorAll(".code-block .shiki").length`,
+    /^0$/
   )
   await check('callout directive renders', 'document.querySelectorAll("aside").length', /^[1-9]/)
   await check(
@@ -148,7 +179,13 @@ async function runSmokeTest(win: BrowserWindow): Promise<void> {
     'document.querySelectorAll(\'[role="tablist"]\').length',
     /^[1-9]/
   )
-  await check('inline quiz renders', hasText('Knowledge check'), /true/)
+  // `textContent`, not `innerText`: a section the reader has skipped rendering
+  // is still in the DOM, but contributes no laid-out text.
+  await check(
+    'inline quiz renders',
+    'document.querySelector(".markdown")?.textContent.toLowerCase().includes("knowledge check") ?? false',
+    /true/
+  )
   await check(
     'task list checkboxes render',
     'document.querySelectorAll(".task-list-item input").length',

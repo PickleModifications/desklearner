@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { useNearViewport } from '@/hooks/useNearViewport'
 import { useUi } from '@/stores/ui'
 
 let mermaidPromise: Promise<typeof import('mermaid').default> | null = null
@@ -93,8 +94,12 @@ export function Mermaid({ chart }: { chart: string }): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const reactId = useId()
   const id = `mermaid-${reactId.replace(/[^a-zA-Z0-9]/g, '')}`
+  // Rendering every diagram in a lesson at once loads Mermaid and lays out each
+  // SVG before the reader has seen a word; hold off until one is nearly in view.
+  const { ref, near } = useNearViewport()
 
   useEffect(() => {
+    if (!near) return
     let cancelled = false
     void (async () => {
       try {
@@ -118,7 +123,7 @@ export function Mermaid({ chart }: { chart: string }): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [chart, isDark, id])
+  }, [chart, isDark, id, near])
 
   if (error) {
     return (
@@ -131,7 +136,17 @@ export function Mermaid({ chart }: { chart: string }): React.JSX.Element {
     )
   }
 
+  // Until the diagram exists, hold roughly the space it will take so scrolling
+  // past an un-rendered one does not shunt the text below it.
+  const placeholder = Math.min(420, 90 + chart.split('\n').length * 26)
+
   return (
-    <figure className="mermaid-figure" dangerouslySetInnerHTML={{ __html: svg }} aria-label="Diagram" />
+    <figure
+      ref={ref}
+      className="mermaid-figure"
+      style={svg ? undefined : { minHeight: placeholder }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+      aria-label="Diagram"
+    />
   )
 }

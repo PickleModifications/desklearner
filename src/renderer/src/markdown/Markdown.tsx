@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo } from 'react'
+import { createContext, memo, useContext, useMemo } from 'react'
 import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown'
+import type { PluggableList } from 'unified'
 import remarkGfm from 'remark-gfm'
 import remarkDirective from 'remark-directive'
 import remarkMath from 'remark-math'
@@ -17,6 +18,7 @@ import { Tab, Tabs } from './components/Tabs'
 import { Details } from './components/Details'
 import { YouTube } from './components/YouTube'
 import { Card, Cards, Checklist, Columns, Kbd, Steps, Term } from './components/Blocks'
+import { chunkMarkdown } from './chunk'
 
 /* --------------------------------------------------------------- context */
 
@@ -126,6 +128,118 @@ function TaskListItem({
 
 /* --------------------------------------------------------------- renderer */
 
+const components = {
+  a: ({ href, children: c }) => <Anchor href={href}>{c}</Anchor>,
+  h1: ({ id, children: c }) => (
+    <Heading level={1} id={id}>
+      {c}
+    </Heading>
+  ),
+  h2: ({ id, children: c }) => (
+    <Heading level={2} id={id}>
+      {c}
+    </Heading>
+  ),
+  h3: ({ id, children: c }) => (
+    <Heading level={3} id={id}>
+      {c}
+    </Heading>
+  ),
+  h4: ({ id, children: c }) => (
+    <Heading level={4} id={id}>
+      {c}
+    </Heading>
+  ),
+
+  table: ({ children: c }) => (
+    <div className="table-wrap">
+      <table>{c}</table>
+    </div>
+  ),
+
+  li: (props) => {
+    const raw = props as { 'data-task-index'?: string; 'data-task-default'?: string }
+    const index = raw['data-task-index']
+    if (index !== undefined) {
+      return (
+        <TaskListItem taskKey={index} defaultChecked={raw['data-task-default'] === 'true'}>
+          {props.children}
+        </TaskListItem>
+      )
+    }
+    return <li>{props.children}</li>
+  },
+
+  pre: ({ children: c }) => <>{c}</>,
+
+  code: (props) => {
+    const { className: cls, children: c } = props as {
+      className?: string
+      children?: React.ReactNode
+    }
+    const match = /language-(\w[\w+-]*)/.exec(cls ?? '')
+    const raw = nodeText(c).replace(/\n$/, '')
+
+    // Inline code has no language class and no newlines.
+    if (!match && !raw.includes('\n')) return <code>{c}</code>
+
+    const lang = match?.[1]
+    if (lang === 'mermaid') return <Mermaid chart={raw} />
+    if (lang === 'quiz') return <InlineQuiz source={raw} />
+
+    const meta = (props as { node?: { data?: { meta?: string } } }).node?.data?.meta
+    const title = /title="([^"]+)"/.exec(meta ?? '')?.[1]
+    return <CodeBlock code={raw} lang={lang} title={title} />
+  },
+
+  'dl-hint': Hint,
+  'dl-tabs': Tabs,
+  'dl-tab': Tab,
+  'dl-details': Details,
+  'dl-steps': Steps,
+  'dl-checklist': Checklist,
+  'dl-cards': Cards,
+  'dl-card': Card,
+  'dl-columns': Columns,
+  'dl-youtube': YouTube,
+  'dl-kbd': Kbd,
+  'dl-term': Term
+} as Components
+
+const REHYPE_PLUGINS: PluggableList = [rehypeSlug, rehypeKatex]
+
+/**
+ * One parsed piece of a document. Memoised on its own source so a re-render of
+ * the page — a scroll write, a settings tweak — never re-parses markdown.
+ */
+const Chunk = memo(function Chunk({
+  source,
+  taskOffset
+}: {
+  source: string
+  taskOffset: number
+}): React.JSX.Element {
+  const remarkPlugins = useMemo<PluggableList>(
+    () => [remarkGfm, remarkDirective, [remarkDeskLearner, { startIndex: taskOffset }], remarkMath],
+    [taskOffset]
+  )
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={REHYPE_PLUGINS}
+      // react-markdown only trusts http(s)/mailto/irc/xmpp and rewrites
+      // everything else to an empty href, which would silently swallow our
+      // `lesson:` / `test:` links. Let those through; everything else keeps
+      // the default sanitising behaviour.
+      urlTransform={courseAwareUrlTransform}
+      components={components}
+    >
+      {source}
+    </ReactMarkdown>
+  )
+})
+
 export interface MarkdownProps {
   children: string
   /** Persisted checkbox state for GFM task lists in this document. */
@@ -147,103 +261,26 @@ export function Markdown({
     [taskState, onTaskChange]
   )
 
-  const components = useMemo(
-    () =>
-      ({
-        a: ({ href, children: c }) => <Anchor href={href}>{c}</Anchor>,
-        h1: ({ id, children: c }) => (
-          <Heading level={1} id={id}>
-            {c}
-          </Heading>
-        ),
-        h2: ({ id, children: c }) => (
-          <Heading level={2} id={id}>
-            {c}
-          </Heading>
-        ),
-        h3: ({ id, children: c }) => (
-          <Heading level={3} id={id}>
-            {c}
-          </Heading>
-        ),
-        h4: ({ id, children: c }) => (
-          <Heading level={4} id={id}>
-            {c}
-          </Heading>
-        ),
-
-        table: ({ children: c }) => (
-          <div className="table-wrap">
-            <table>{c}</table>
-          </div>
-        ),
-
-        li: (props) => {
-          const raw = props as { 'data-task-index'?: string; 'data-task-default'?: string }
-          const index = raw['data-task-index']
-          if (index !== undefined) {
-            return (
-              <TaskListItem taskKey={index} defaultChecked={raw['data-task-default'] === 'true'}>
-                {props.children}
-              </TaskListItem>
-            )
-          }
-          return <li>{props.children}</li>
-        },
-
-        pre: ({ children: c }) => <>{c}</>,
-
-        code: (props) => {
-          const { className: cls, children: c } = props as {
-            className?: string
-            children?: React.ReactNode
-          }
-          const match = /language-(\w[\w+-]*)/.exec(cls ?? '')
-          const raw = nodeText(c).replace(/\n$/, '')
-
-          // Inline code has no language class and no newlines.
-          if (!match && !raw.includes('\n')) return <code>{c}</code>
-
-          const lang = match?.[1]
-          if (lang === 'mermaid') return <Mermaid chart={raw} />
-          if (lang === 'quiz') return <InlineQuiz source={raw} />
-
-          const meta = (props as { node?: { data?: { meta?: string } } }).node?.data?.meta
-          const title = /title="([^"]+)"/.exec(meta ?? '')?.[1]
-          return <CodeBlock code={raw} lang={lang} title={title} />
-        },
-
-        'dl-hint': Hint,
-        'dl-tabs': Tabs,
-        'dl-tab': Tab,
-        'dl-details': Details,
-        'dl-steps': Steps,
-        'dl-checklist': Checklist,
-        'dl-cards': Cards,
-        'dl-card': Card,
-        'dl-columns': Columns,
-        'dl-youtube': YouTube,
-        'dl-kbd': Kbd,
-        'dl-term': Term
-      }) as Components,
-    []
-  )
+  // Long documents are cut into sections the browser can skip rendering while
+  // they are off screen. Short ones — chat bubbles, summaries — render whole.
+  const chunks = useMemo(() => chunkMarkdown(children), [children])
 
   return (
     <TaskContext.Provider value={task}>
       <div className={className ? `markdown ${className}` : 'markdown'} style={style}>
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkDirective, remarkDeskLearner, remarkMath]}
-          rehypePlugins={[rehypeSlug, rehypeKatex]}
-          // react-markdown only trusts http(s)/mailto/irc/xmpp and rewrites
-          // everything else to an empty href, which would silently swallow our
-          // `lesson:` / `test:` links. Let those through; everything else keeps
-          // the default sanitising behaviour.
-          urlTransform={courseAwareUrlTransform}
-          components={components}
-        >
-          {children}
-        </ReactMarkdown>
+        {chunks ? (
+          chunks.map((chunk) => (
+            <section
+              key={chunk.key}
+              className="md-chunk"
+              style={{ containIntrinsicSize: `auto ${chunk.estimate}px` }}
+            >
+              <Chunk source={chunk.source} taskOffset={chunk.taskOffset} />
+            </section>
+          ))
+        ) : (
+          <Chunk source={children} taskOffset={0} />
+        )}
       </div>
     </TaskContext.Provider>
   )

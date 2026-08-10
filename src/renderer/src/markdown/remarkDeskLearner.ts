@@ -47,9 +47,11 @@ function toProps(attrs: Record<string, string | null | undefined> = {}): Record<
  * Bridges remark-directive syntax onto custom elements the renderer maps to
  * React components, and tags GFM task-list items so their state can persist.
  */
-export function remarkDeskLearner() {
+export function remarkDeskLearner(options: { startIndex?: number } = {}) {
   return (tree: Root): void => {
-    let taskIndex = 0
+    // A long lesson is rendered in chunks; each one is told where its task
+    // items sit in the whole document so persisted checkbox state still lines up.
+    let taskIndex = options.startIndex ?? 0
 
     visit(tree, (node) => {
       const n = node as unknown as DirectiveNode

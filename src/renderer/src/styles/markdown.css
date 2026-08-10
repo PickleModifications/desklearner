@@ -16,6 +16,37 @@
   margin-top: 0;
 }
 
+/* --------------------------- virtualised sections ------------------------ *
+ * A long lesson is rendered as heading-delimited sections. `content-visibility`
+ * lets the browser skip layout and paint for the ones off screen, using the
+ * inline `contain-intrinsic-size` estimate as a placeholder until a section has
+ * been rendered once (after that the browser remembers its real size).
+ *
+ * The containment that comes with it also stops margins collapsing across a
+ * section boundary, so the seam margins are set explicitly instead: sections
+ * always start at a heading, and 2em matches an h2's own top margin.
+ * ------------------------------------------------------------------------- */
+
+.md-chunk {
+  content-visibility: auto;
+  margin-top: 2em;
+}
+.md-chunk:first-child {
+  margin-top: 0;
+}
+.md-chunk > *:first-child {
+  margin-top: 0;
+}
+.md-chunk > *:last-child {
+  margin-bottom: 0;
+}
+
+@media print {
+  .md-chunk {
+    content-visibility: visible;
+  }
+}
+
 .markdown h1,
 .markdown h2,
 .markdown h3,

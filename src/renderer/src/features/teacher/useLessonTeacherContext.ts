@@ -78,7 +78,8 @@ export function useLessonTeacherContext({
   useEffect(() => {
     if (!scrollEl || !doc) return
 
-    let frame = 0
+    let idle: ReturnType<typeof setTimeout> | undefined
+
     const update = (): void => {
       const max = scrollEl.scrollHeight - scrollEl.clientHeight
       const scrollPercent = max > 0 ? scrollEl.scrollTop / max : 0
@@ -93,19 +94,32 @@ export function useLessonTeacherContext({
         else break
       }
 
+      // Publishing is a store write that re-renders every Teacher subscriber, and
+      // measuring every heading forces layout, so skip both unless the learner
+      // has actually moved somewhere the Teacher would describe differently.
+      const previous = positionRef.current
+      if (
+        previous.currentHeading === currentHeading &&
+        Math.abs((previous.scrollPercent ?? -1) - scrollPercent) < 0.02
+      ) {
+        return
+      }
+
       positionRef.current = { currentHeading, scrollPercent }
       setContext(lessonContext(doc, courseTitle, chapterTitle, outline, positionRef.current))
     }
 
+    // Nothing runs while the wheel is moving; the position is read once the
+    // learner settles, which is the only time it is worth sending anyway.
     const onScroll = (): void => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(update)
+      clearTimeout(idle)
+      idle = setTimeout(update, 300)
     }
 
     update()
     scrollEl.addEventListener('scroll', onScroll, { passive: true })
     return () => {
-      cancelAnimationFrame(frame)
+      clearTimeout(idle)
       scrollEl.removeEventListener('scroll', onScroll)
     }
   }, [scrollEl, doc, headings, courseTitle, chapterTitle, outline, setContext])
