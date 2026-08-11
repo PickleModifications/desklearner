@@ -1,0 +1,236 @@
+{
+  "id": "test-chapter-4",
+  "title": "Chapter 4 Test: Plus Platform Features",
+  "description": "Eighteen questions on organization architecture, Shopify Functions, checkout extensibility, Flow and Launchpad. Aim for 75%.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 35,
+  "questions": [
+    {
+      "id": "c4-q01",
+      "type": "single",
+      "prompt": "A UK brand wants to sell in Germany with German language, EUR pricing and a .de domain. Expansion store or market?",
+      "options": [
+        "Expansion store — different country and currency",
+        "A market on the existing store, unless legal, catalogue or operational separation genuinely requires otherwise",
+        "Expansion store, because themes cannot be translated",
+        "A market, because expansion stores cannot have their own domain"
+      ],
+      "answer": 1,
+      "explanation": "Markets handle currency, language, domains and market-specific pricing on one store — one theme, one catalogue, one customer base, one set of apps. Expansion stores are right when there is genuine separation: a distinct legal entity, a different business model, or a substantially different catalogue."
+    },
+    {
+      "id": "c4-q02",
+      "type": "multi",
+      "prompt": "Which of these are NOT shared automatically between stores in a Plus organization? Select all that apply.",
+      "options": [
+        "Themes",
+        "Metafield and metaobject definitions",
+        "Customers and their accounts",
+        "Installed apps"
+      ],
+      "answer": [0, 1, 2, 3],
+      "explanation": "None of them are shared. Every expansion store multiplies your maintenance surface by roughly one — separate theme deploys, separate app bills, separate definitions, separate customers. That is the strongest argument against adding stores casually.",
+      "points": 2
+    },
+    {
+      "id": "c4-q03",
+      "type": "single",
+      "prompt": "Why can a Shopify Function not call your ERP to check a product flag at run time?",
+      "options": [
+        "Rate limits make it too slow",
+        "Functions run sandboxed as WebAssembly with no network or filesystem access and a strict instruction budget",
+        "The Admin API does not expose ERP data",
+        "It can, but only from Rust"
+      ],
+      "answer": 1,
+      "explanation": "The sandbox is what makes Functions safe to run inside the checkout path. Any external data must already be on the store — typically synced into a metafield by an integration and read through the Function's input query."
+    },
+    {
+      "id": "c4-q04",
+      "type": "single",
+      "prompt": "A discount Function receives a malformed configuration metafield. What should it do?",
+      "options": [
+        "Throw, so the error is visible",
+        "Return no discount operations — fail closed",
+        "Fall back to a default 10% discount",
+        "Retry parsing with a lenient parser"
+      ],
+      "answer": 1,
+      "explanation": "Fail closed. A missing discount is a support ticket; an unintended discount is real money, applied to every affected order until someone notices. Write the failure path first and make it the safe one.",
+      "points": 2
+    },
+    {
+      "id": "c4-q05",
+      "type": "single",
+      "prompt": "Which is the correct mechanism for charging wholesale customers different prices from DTC customers?",
+      "options": [
+        "A product discount Function keyed on a customer tag",
+        "B2B catalogs and price lists",
+        "A separate expansion store",
+        "A cart transform Function"
+      ],
+      "answer": 1,
+      "explanation": "Functions are for rules; catalogs and price lists are for prices. Implementing wholesale pricing as a discount shows the DTC price struck through, recomputes on every request, and does not appear where catalog pricing does. Chapter 5 covers the correct model."
+    },
+    {
+      "id": "c4-q06",
+      "type": "multi",
+      "prompt": "Which techniques keep a Function's input query small and within its instruction budget? Select all that apply.",
+      "options": [
+        "Using `hasAnyTag` instead of fetching all customer tags",
+        "Using `inCollections` instead of fetching a product's collection list",
+        "Requesting only the fields the logic reads",
+        "Fetching every variant of every product in the cart for safety"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Ask the platform boolean questions rather than pulling lists to filter in code. The input query defines the only data available at run time, so it should be as narrow as the logic allows.",
+      "points": 2
+    },
+    {
+      "id": "c4-q07",
+      "type": "matching",
+      "prompt": "Match each requirement to the correct Function API.",
+      "pairs": [
+        { "left": "Hide express delivery for hazardous items", "right": "Delivery customization" },
+        { "left": "Only show Net 30 terms to approved companies", "right": "Payment customization" },
+        { "left": "Bundle three items into one line at a fixed price", "right": "Cart transform" },
+        { "left": "Block checkout when case-quantity rules are broken", "right": "Cart and checkout validation" }
+      ],
+      "explanation": "Picking the wrong API is the most common Functions mistake, usually by trying to express a delivery or payment rule as a discount. Each API has its own input shape and its own output operations.",
+      "points": 3
+    },
+    {
+      "id": "c4-q08",
+      "type": "boolean",
+      "prompt": "Shopify Scripts should be used for new pricing logic on a Plus store because they are Plus-exclusive and well established.",
+      "answer": false,
+      "explanation": "Scripts are legacy and being replaced by Functions, which are available on all plans, live in version control, are unit-testable, and cover a wider set of extension points. Inheriting Scripts means planning a migration, not extending them."
+    },
+    {
+      "id": "c4-q09",
+      "type": "single",
+      "prompt": "What replaced Additional Scripts for analytics and marketing tracking?",
+      "options": [
+        "Checkout UI extensions",
+        "The Web Pixels API",
+        "Shopify Flow HTTP actions",
+        "The branding API"
+      ],
+      "answer": 1,
+      "explanation": "Pixels run sandboxed off the main thread against a defined customer-event schema, respect the customer privacy API, and receive checkout events theme code cannot see. UI extensions handle content and fields; the branding API handles styling."
+    },
+    {
+      "id": "c4-q10",
+      "type": "single",
+      "prompt": "A stakeholder wants a checkout countdown timer with custom fonts, free-form CSS and animation. What is the accurate answer?",
+      "options": [
+        "Yes, via checkout.liquid",
+        "Yes, a UI extension renders arbitrary HTML and CSS",
+        "Partly — an extension can render a countdown using Shopify's components with branding-controlled styling, but arbitrary markup, CSS and animation are not available",
+        "No, nothing can be added to checkout"
+      ],
+      "answer": 2,
+      "explanation": "Extensions are real and capable but use Shopify's component set inside a sandbox, inheriting merchant branding. Being precise about that boundary early prevents approving a design that cannot be built."
+    },
+    {
+      "id": "c4-q11",
+      "type": "single",
+      "prompt": "Why prefer a cart and checkout validation Function over a UI extension's `useBuyerJourneyIntercept` for enforcing minimum order values?",
+      "options": [
+        "The Function renders a nicer message",
+        "The Function runs server-side and applies everywhere, including draft orders and API-created checkouts, whereas the intercept is client-side and only applies where the extension renders",
+        "Intercepts are deprecated",
+        "Functions are cheaper to run"
+      ],
+      "answer": 1,
+      "explanation": "Use the Function as the enforcement mechanism and the UI extension on top for the customer-facing message. Anything with a commercial consequence needs the server-side guarantee."
+    },
+    {
+      "id": "c4-q12",
+      "type": "single",
+      "prompt": "A stakeholder asks: when a wholesale order over £5,000 arrives, notify the rep, tag the order and create a CRM task. What should you build first?",
+      "options": [
+        "A custom app consuming the ORDERS_CREATE webhook",
+        "A Flow workflow, moving to code only if Flow's limits are genuinely reached",
+        "A Function",
+        "An order status page script"
+      ],
+      "answer": 1,
+      "explanation": "Every element is a standard Flow trigger, condition and action, including the CRM task via a connector or HTTP request. It takes half an hour, needs no deployment, and the business can adjust the threshold themselves."
+    },
+    {
+      "id": "c4-q13",
+      "type": "multi",
+      "prompt": "Which are genuine limitations of Flow's HTTP request action? Select all that apply.",
+      "options": [
+        "Limited, non-configurable retry behaviour",
+        "No dead-letter queue you control",
+        "Failures are logged but nobody is watching the log",
+        "It cannot send JSON bodies"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "It sends JSON fine. The problem is operational: it is not a resilient integration platform. Use it for notifications and low-volume enrichment, not as the only path for order data reaching an ERP.",
+      "points": 2
+    },
+    {
+      "id": "c4-q14",
+      "type": "single",
+      "prompt": "What is the main benefit of emitting a Flow custom trigger from your own app or Function rather than hard-coding the response?",
+      "options": [
+        "It is faster than a webhook",
+        "The business can change what happens next, in a workflow they edit, without a deployment from you",
+        "It bypasses API rate limits",
+        "It guarantees delivery"
+      ],
+      "answer": 1,
+      "explanation": "You build the event; they build the response. It is the same principle as schema settings and Function configuration metafields, applied to business process — and it is one of the most reliable ways for a solo developer to stop being the bottleneck."
+    },
+    {
+      "id": "c4-q15",
+      "type": "boolean",
+      "prompt": "A Flow workflow that adds a tag, triggered by a tag being added, can create a loop — and indirect loops can form across several workflows.",
+      "answer": true,
+      "explanation": "This is why the workflow inventory matters. Before adding any workflow that writes data, you need to know what else triggers on that data, and opening sixty workflows one by one is not a viable way to find out."
+    },
+    {
+      "id": "c4-q16",
+      "type": "single",
+      "prompt": "A campaign needs a new homepage, ten products becoming visible, and price drops on a collection — all at 09:00, reverting a week later. What is the right mechanism?",
+      "options": [
+        "A Flow workflow on a time trigger",
+        "A Launchpad event scheduling the theme publish, product publishing and price changes with reverts",
+        "Time-gated Liquid conditionals",
+        "A calendar reminder and a person clicking Publish"
+      ],
+      "answer": 1,
+      "explanation": "Launchpad coordinates multiple changes at a defined time with scheduled reverts — and the revert is the part manual processes most reliably fail, because it usually falls at midnight."
+    },
+    {
+      "id": "c4-q17",
+      "type": "single",
+      "prompt": "Why is time-gated Liquid a poor mechanism for making a product drop visible at an exact second?",
+      "options": [
+        "Liquid cannot compare dates",
+        "Rendered output is cached, so visibility may not flip at exactly the same instant for every visitor — and Liquid cannot publish products or change prices anyway",
+        "The `now` filter is deprecated",
+        "It requires a theme deployment"
+      ],
+      "answer": 1,
+      "explanation": "For a banner, cache-related imprecision is fine. For a drop or a price change, use a mechanism the platform schedules itself. Timezone handling is the other trap — store schedule values in UTC and label the field."
+    },
+    {
+      "id": "c4-q18",
+      "type": "single",
+      "prompt": "Which element of a launch runbook most distinguishes a plan from a hope?",
+      "options": [
+        "The pre-flight checklist",
+        "A named rollback decision owner plus an objective, measurable rollback trigger",
+        "The list of people on the launch call",
+        "The post-campaign retro template"
+      ],
+      "answer": 1,
+      "explanation": "Under pressure, the hard part is not knowing how to roll back — it is deciding to. Naming who decides and what number triggers the decision, in advance, is what makes the rollback actually happen."
+    }
+  ]
+}

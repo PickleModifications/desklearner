@@ -1,0 +1,234 @@
+{
+  "id": "test-chapter-2",
+  "title": "Chapter 2 Test: Storefront Development",
+  "description": "Eighteen questions on responsive theme CSS, framework-free JavaScript, product pages, the cart and Ajax APIs, and the merchandising surfaces. Aim for 75%.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 35,
+  "questions": [
+    {
+      "id": "c2-q01",
+      "type": "single",
+      "prompt": "A product card looks right in a 4-column grid but cramped inside a cart drawer at the same viewport width. What is the correct fix?",
+      "options": [
+        "A viewport media query targeting narrow screens",
+        "A container query on the card's own inline size",
+        "A second card snippet with drawer-specific styles",
+        "A fixed pixel width on the drawer"
+      ],
+      "answer": 1,
+      "explanation": "The viewport is identical in both contexts; only the available container width differs. `container-type: inline-size` plus `@container` lets one component respond to the space it is actually given, which is what makes a card reusable across grid, drawer, related products and search."
+    },
+    {
+      "id": "c2-q02",
+      "type": "multi",
+      "prompt": "Which of these are direct causes of Cumulative Layout Shift in a Shopify theme? Select all that apply.",
+      "options": [
+        "Images rendered without width and height attributes",
+        "Content injected by apps after first paint",
+        "Using `clamp()` for font sizes",
+        "Web fonts swapping in with different metrics"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Missing intrinsic dimensions, late-injected content and font metric swaps are the three big CLS sources in themes. `clamp()` is resolved at layout time and does not itself cause shift — the fix for images is `image_tag`, which emits width and height from the real aspect ratio.",
+      "points": 2
+    },
+    {
+      "id": "c2-q03",
+      "type": "single",
+      "prompt": "Why does `minmax(0, 1fr)` fix grid overflow where `1fr` does not?",
+      "options": [
+        "`1fr` is invalid in `repeat()`",
+        "`1fr` has an automatic minimum size, so a long title or wide image can force the column wider",
+        "`minmax` enables container queries",
+        "`1fr` does not respect gap"
+      ],
+      "answer": 1,
+      "explanation": "`1fr` is shorthand for `minmax(auto, 1fr)`, and the `auto` minimum means the track cannot shrink below its content. Setting the minimum to 0 lets the track shrink and the content wrap or scroll — this one substitution fixes most 'grid overflows on mobile' bugs."
+    },
+    {
+      "id": "c2-q04",
+      "type": "single",
+      "prompt": "Which custom element lifecycle behaviour makes web components particularly well suited to Shopify themes?",
+      "options": [
+        "Shadow DOM isolates theme CSS from app CSS",
+        "`connectedCallback` runs automatically when the theme editor re-renders a section or the cart drawer swaps in new HTML",
+        "Custom elements are server-rendered by Liquid",
+        "They can be defined without a hyphen in the tag name"
+      ],
+      "answer": 1,
+      "explanation": "Sections are re-rendered and replaced constantly — by the theme editor, by cart mutations, by filtering. Custom elements re-initialise themselves on insertion and clean up on removal, which removes an entire category of re-binding bugs. Tag names must contain a hyphen."
+    },
+    {
+      "id": "c2-q05",
+      "type": "boolean",
+      "prompt": "Interpolating Liquid directly into a JavaScript string literal, such as `var title = '{{ product.title }}'`, is acceptable as long as the value comes from Shopify rather than a customer.",
+      "answer": false,
+      "explanation": "It breaks on any apostrophe and is an injection vector for any data a third party can write into the store. Use `<script type=\"application/json\">{{ product | json }}</script>` and `JSON.parse` — correctly escaped and never executed."
+    },
+    {
+      "id": "c2-q06",
+      "type": "single",
+      "prompt": "A customer clicks quickly through four sizes on a PDP that fetches re-rendered section HTML per change, and occasionally sees a price that does not match the selection. What is the defect?",
+      "options": [
+        "The Section Rendering API caches per product",
+        "Concurrent requests resolve out of order; the fix is aborting the previous request",
+        "`replaceState` should be `pushState`",
+        "`selected_or_first_available_variant` ignores the variant parameter"
+      ],
+      "answer": 1,
+      "explanation": "Without an AbortController or a discard-late-responses guard, a slower earlier request can land after a faster later one and render stale markup. Developers rarely reproduce it because they click slowly on fast connections.",
+      "points": 2
+    },
+    {
+      "id": "c2-q07",
+      "type": "single",
+      "prompt": "A cart contains the same variant twice with different line item properties. The customer changes the quantity on one of them. Which endpoint is correct?",
+      "options": [
+        "update.js keyed by variant ID",
+        "change.js keyed by the line item key",
+        "add.js with a negative quantity",
+        "clear.js then re-add everything"
+      ],
+      "answer": 1,
+      "explanation": "update.js is keyed by variant ID and cannot distinguish two lines sharing a variant. change.js targets a specific line by its key — the variant ID plus a hash of its properties — which is the only correct choice for per-line controls.",
+      "points": 2
+    },
+    {
+      "id": "c2-q08",
+      "type": "multi",
+      "prompt": "Which are genuine advantages of updating the cart drawer via the Section Rendering API rather than rebuilding markup in JavaScript? Select all that apply.",
+      "options": [
+        "Discount and price logic exists once, in Liquid",
+        "Merchant theme-editor settings apply automatically with no code change",
+        "Function-based and B2B catalog pricing are computed correctly server-side",
+        "It eliminates the network round trip"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Server rendering keeps one implementation of pricing and merchandising logic and gets Function discounts and B2B catalog prices right for free. It does not remove the round trip — that is its cost, and it is usually worth paying.",
+      "points": 2
+    },
+    {
+      "id": "c2-q09",
+      "type": "single",
+      "prompt": "An add-to-cart returns HTTP 422 with a `description` reading \"You can only add 3 … to the cart.\" What should the UI do?",
+      "options": [
+        "Show a generic error message to avoid exposing internals",
+        "Show Shopify's description and reset the quantity input to the maximum available",
+        "Retry the request three times",
+        "Silently reduce the quantity and add it anyway"
+      ],
+      "answer": 1,
+      "explanation": "The description is customer-readable and contains the only useful information in the response — the actual available quantity. A customer told 'only 3 available' buys 3; a customer told 'something went wrong' leaves."
+    },
+    {
+      "id": "c2-q10",
+      "type": "matching",
+      "prompt": "Match each cart data mechanism to its correct use.",
+      "pairs": [
+        { "left": "Line item property", "right": "Data attached to a single line — engraving text, personalisation" },
+        { "left": "Cart attribute", "right": "Structured key/value on the whole cart — delivery date, PO number" },
+        { "left": "Cart note", "right": "Unstructured free-text customer instruction for the whole order" },
+        { "left": "Underscore-prefixed key", "right": "Internal metadata hidden from the customer but visible in the admin and APIs" }
+      ],
+      "explanation": "Merchandising teams request all four without distinguishing them. Properties are per-line and make identical lines distinct; attributes are structured and flow to Flow, Functions and integrations; the note is free text; the underscore prefix hides a key from customer-facing surfaces.",
+      "points": 3
+    },
+    {
+      "id": "c2-q11",
+      "type": "short",
+      "prompt": "Which JavaScript object should every Ajax cart URL be built from, so the storefront works under localised Markets paths like /en-gb/?",
+      "accepted": ["window.Shopify.routes.root", "Shopify.routes.root", "routes.root", "Shopify.routes"],
+      "pattern": "routes",
+      "placeholder": "e.g. window.X.Y.Z",
+      "explanation": "`window.Shopify.routes.root` is populated via content_for_header and resolves to '/' or the localised prefix. Hard-coded '/cart/add.js' works in development and breaks for international customers. The Liquid equivalent is `{{ routes.cart_add_url }}`."
+    },
+    {
+      "id": "c2-q12",
+      "type": "single",
+      "prompt": "Why should filter links use `value.url_to_add` and `value.url_to_remove` rather than constructing URLs in your own code?",
+      "options": [
+        "Hand-built URLs are blocked by Shopify's CDN",
+        "Filter parameter names and escaping rules are non-obvious — metafield filters especially — and platform-provided URLs are always correct",
+        "Only platform URLs trigger the Section Rendering API",
+        "Constructed URLs break the canonical tag"
+      ],
+      "answer": 1,
+      "explanation": "Filter parameters take forms like `filter.p.m.custom.safety_rating` with their own escaping rules. Hand-built URLs work for simple cases in development and break on a metafield filter whose value contains a space."
+    },
+    {
+      "id": "c2-q13",
+      "type": "single",
+      "prompt": "A merchandising team asks for infinite scroll on collections. What is the strongest technical objection?",
+      "options": [
+        "It cannot be built with the Section Rendering API",
+        "It makes the footer unreachable, breaks back-button behaviour unless carefully handled, and reduces crawlability",
+        "Shopify rate-limits the requests",
+        "It always fails Core Web Vitals"
+      ],
+      "answer": 1,
+      "explanation": "Infinite scroll is buildable and can perform well, but the footer holds navigation and trust signals, history and scroll restoration need deliberate handling, and crawlers may not reach later pages. A load-more button layered over real pagination links avoids all three."
+    },
+    {
+      "id": "c2-q14",
+      "type": "ordering",
+      "prompt": "Order these steps of an INP-friendly click handler, fastest perceived response first.",
+      "items": [
+        "Render the result",
+        "Await the network request",
+        "Set the loading state so the browser can paint",
+        "Yield to the browser for a frame"
+      ],
+      "answer": [
+        "Set the loading state so the browser can paint",
+        "Yield to the browser for a frame",
+        "Await the network request",
+        "Render the result"
+      ],
+      "explanation": "INP is measured from interaction to the next paint. Painting a loading state first, then yielding, means the metric records a few milliseconds rather than the whole request duration — and the customer gets immediate feedback either way.",
+      "points": 3
+    },
+    {
+      "id": "c2-q15",
+      "type": "single",
+      "prompt": "Why should a PDP render its initial price from `selected_or_first_available_variant` rather than the first variant with JavaScript correcting it?",
+      "options": [
+        "The first variant object is not exposed in Liquid",
+        "It avoids a visible price flash and prevents a wrong price appearing in HTML that crawlers and ad platforms read",
+        "JavaScript cannot access variant prices",
+        "It is required by the Section Rendering API"
+      ],
+      "answer": 1,
+      "explanation": "`selected_or_first_available_variant` resolves the `?variant=` parameter server-side, so deep links from email, ads and Google Shopping render the correct price in the HTML — good for the customer, structured data and LCP alike."
+    },
+    {
+      "id": "c2-q16",
+      "type": "boolean",
+      "prompt": "Placing external video and 3D model markup inside a `<template>` element prevents any network request until it is cloned into the DOM.",
+      "answer": true,
+      "explanation": "Template content is parsed but inert — no iframe, no scripts, no media fetches. Cloning on click is what turns a multi-megabyte PDP with several video embeds into one that loads media only on demand. Dawn's DeferredMedia implements exactly this."
+    },
+    {
+      "id": "c2-q17",
+      "type": "fill-blank",
+      "prompt": "Complete the Liquid that splits a large collection across pages.",
+      "text": "{% {{0}} collection.products {{1}} 24 %} … {% endpaginate %}",
+      "blanks": [["paginate"], ["by"]],
+      "explanation": "Without a paginate tag the loop stops at the platform's default limit regardless of collection size, and merchandisers report that products are missing. The tag also exposes a `paginate` object with the page links you need for SEO-safe load-more.",
+      "points": 2
+    },
+    {
+      "id": "c2-q18",
+      "type": "single",
+      "prompt": "What is the strongest argument for building a small set of flexible storytelling sections rather than one bespoke section per campaign design?",
+      "options": [
+        "Flexible sections render faster",
+        "Every bespoke section is permanent maintenance and QA surface that only you can change, while flexible sections let the brand team compose without a deployment",
+        "Shopify limits themes to twenty sections",
+        "Bespoke sections cannot use colour schemes"
+      ],
+      "answer": 1,
+      "explanation": "Per-design sections accumulate into forty near-identical files nobody can audit, and every campaign becomes a developer ticket. Flexible sections with genuinely structural options move that work to the people who own the campaign — with a deliberate bespoke exception for the two or three moments a year that justify one."
+    }
+  ]
+}

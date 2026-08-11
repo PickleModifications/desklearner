@@ -1,0 +1,239 @@
+{
+  "id": "test-chapter-6",
+  "title": "Chapter 6 Test: POS & Platform Ownership",
+  "description": "Eighteen questions on POS fundamentals and configuration, POS UI extensions, multi-location scaling, apps and integrations, and platform ownership. Aim for 75%.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 35,
+  "questions": [
+    {
+      "id": "c6-q01",
+      "type": "single",
+      "prompt": "An associate scans a product in POS and it will not add to the sale, though the product exists in the admin. What do you check first?",
+      "options": [
+        "Whether the device is paired with the card reader",
+        "Whether the product is published to the POS sales channel",
+        "Whether the staff role permits discounting",
+        "Whether the store is on POS Pro"
+      ],
+      "answer": 1,
+      "explanation": "A product not published to the POS channel cannot be sold in store even though it exists everywhere else. It surprises everyone once and is the first thing to eliminate."
+    },
+    {
+      "id": "c6-q02",
+      "type": "multi",
+      "prompt": "Which capabilities require POS Pro rather than POS Lite? Select all that apply.",
+      "options": [
+        "A custom smart grid configured per location",
+        "Retail staff management with granular roles",
+        "Save and retrieve carts",
+        "Taking payments and issuing receipts"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Payments and receipts are in Lite. Per-location grids, retail staff roles, saved carts, in-store analytics and advanced inventory are Pro. A meaningful share of 'can we build this' requests are answered by the tier rather than by development.",
+      "points": 2
+    },
+    {
+      "id": "c6-q03",
+      "type": "single",
+      "prompt": "A POS UI extension needs a customer's trade credit limit from a company metafield. How should it get it?",
+      "options": [
+        "Store an Admin API token in the extension and query directly",
+        "Call your app backend with a session token, which the backend verifies before querying the Admin API",
+        "Read it from the POS cart API",
+        "Copy the value into a product metafield"
+      ],
+      "answer": 1,
+      "explanation": "An extension runs on a device in a shop and must never hold an Admin API token. `getSessionToken()` yields a short-lived token your backend verifies — the same trust boundary as an app proxy on the storefront.",
+      "points": 2
+    },
+    {
+      "id": "c6-q04",
+      "type": "single",
+      "prompt": "Which mechanism carries structured data captured at the till through to the order, the admin and your ERP?",
+      "options": [
+        "A note on the POS device",
+        "Line item properties set from the extension, with an underscore prefix for internal values",
+        "A customer tag",
+        "The smart grid tile subtitle"
+      ],
+      "answer": 1,
+      "explanation": "Line item properties are the same mechanism as the online store: visible on the order, available to Flow and integrations, and hidden from the customer's receipt when the key starts with an underscore."
+    },
+    {
+      "id": "c6-q05",
+      "type": "boolean",
+      "prompt": "A POS UI extension may block completion of a sale while it waits for a slow backend response.",
+      "answer": false,
+      "explanation": "There is a customer at the till and possibly a queue. Every extension must fail to a state where the associate can still complete the transaction — an honest message and a way forward, never an unresolved spinner."
+    },
+    {
+      "id": "c6-q06",
+      "type": "single",
+      "prompt": "A business will grow from one store to eight. Which decision at store one most reduces the cost of store eight?",
+      "options": [
+        "Choosing POS Pro from the start",
+        "Keeping location-specific data in metafields or metaobjects, and never hard-coding a location ID",
+        "Standardising on identical hardware",
+        "Creating a separate Shopify store per location"
+      ],
+      "answer": 1,
+      "explanation": "A separate store per location would be actively harmful; Pro and standard hardware help but do not compound. If store details are data and nothing references a location by hard-coded ID, opening a store is data entry plus a runbook.",
+      "points": 2
+    },
+    {
+      "id": "c6-q07",
+      "type": "single",
+      "prompt": "Which is the strongest argument against enabling ship-from-store without first agreeing limits with retail operations?",
+      "options": [
+        "It increases shipping costs",
+        "It consumes store staff time during trading hours — a cost invisible in ecommerce metrics and very visible on the shop floor",
+        "It requires POS Pro",
+        "It breaks fulfilment priority"
+      ],
+      "answer": 1,
+      "explanation": "The engineering is straightforward; the operational cost lands on people who did not agree to it. Introduce it with agreed caps, cut-offs and a stock buffer — a rollout that quietly turns stores into warehouses damages the relationship you need for everything else."
+    },
+    {
+      "id": "c6-q08",
+      "type": "single",
+      "prompt": "How should a low-stock alert workflow be written across eight retail locations?",
+      "options": [
+        "One workflow per location with the manager's email in the action",
+        "One workflow triggered at any location, sending to that location's manager_email metafield",
+        "A daily report emailed to head office",
+        "A POS extension that alerts on the device"
+      ],
+      "answer": 1,
+      "explanation": "One location-agnostic workflow serves every store forever. Eight workflows means eight edits when a threshold changes, and eight chances to miss one — the same anti-pattern as hard-coding location IDs, in a different tool."
+    },
+    {
+      "id": "c6-q09",
+      "type": "multi",
+      "prompt": "Which parts of a store opening genuinely cannot be scripted? Select all that apply.",
+      "options": [
+        "Pairing card readers and receipt printers",
+        "The opening stocktake",
+        "Creating the location and its metafields",
+        "Issuing staff PINs"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Location creation, metafields, metaobject entries, channel publication and grid templates are all scriptable. Hardware, physical counting and PIN issuance stay in the runbook — the goal is that everything repeatable is repeated identically, not that nothing is manual.",
+      "points": 2
+    },
+    {
+      "id": "c6-q10",
+      "type": "single",
+      "prompt": "Which question about a candidate app is most often skipped and most often expensive on a three-channel store?",
+      "options": [
+        "What does it cost per month?",
+        "Does it support B2B and POS, or only DTC?",
+        "How many reviews does it have?",
+        "Does it have a dark mode?"
+      ],
+      "answer": 1,
+      "explanation": "A large share of apps are DTC-only. They install, appear to work, and behave incorrectly or silently not at all for wholesale and in-store sales — which for a pricing or badging app means a wrong price shown to a trade buyer.",
+      "points": 2
+    },
+    {
+      "id": "c6-q11",
+      "type": "boolean",
+      "prompt": "Pasting an app's snippet into theme.liquid is acceptable when the app also offers a theme app extension.",
+      "answer": false,
+      "explanation": "Pasted code is not versioned by the app, survives uninstall, is invisible in an app audit, and cannot be removed by anyone who does not know it is there. If an app's only integration instruction is 'paste this in', treat that as a signal about the vendor."
+    },
+    {
+      "id": "c6-q12",
+      "type": "single",
+      "prompt": "An ERP occasionally receives duplicate Shopify orders and about once a week misses one. What is the correct pair of fixes?",
+      "options": [
+        "Poll every five minutes instead of using webhooks",
+        "Make the consumer idempotent on the order ID, and add a nightly reconciliation comparing order sets",
+        "Request exactly-once delivery from Shopify",
+        "Retry failed webhooks manually from the admin"
+      ],
+      "answer": 1,
+      "explanation": "Delivery is at-least-once, so duplicates are expected and handled by idempotency rather than prevented. Missed deliveries also happen, which is why every event-driven integration needs scheduled reconciliation as its safety net.",
+      "points": 2
+    },
+    {
+      "id": "c6-q13",
+      "type": "single",
+      "prompt": "Why does establishing a source of truth per data field matter more than the integration mechanism?",
+      "options": [
+        "Shopify requires it for API access",
+        "Most integration disasters come from two systems both believing they own a field and overwriting each other, with nobody able to say which value is correct",
+        "It determines rate limit consumption",
+        "It is needed to configure webhooks"
+      ],
+      "answer": 1,
+      "explanation": "The mechanism is a solvable engineering problem. Ownership ambiguity produces loops, drift and unresolvable disputes about correctness — which is why the source-of-truth table is written and signed off before any code."
+    },
+    {
+      "id": "c6-q14",
+      "type": "matching",
+      "prompt": "Match each integration need to its correct mechanism.",
+      "pairs": [
+        { "left": "React to an order being created", "right": "Webhook to a queued, idempotent consumer" },
+        { "left": "Export 40,000 products nightly", "right": "Bulk operation returning JSONL" },
+        { "left": "Notify a Slack channel of a large order", "right": "Shopify Flow" },
+        { "left": "Look up data on demand from your backend", "right": "Admin GraphQL with cost-aware backoff" }
+      ],
+      "explanation": "Choosing the wrong mechanism is usually visible immediately as either rate-limit pain or unacceptable latency. The rule that holds across all of them: never poll where a webhook exists, and always reconcile.",
+      "points": 3
+    },
+    {
+      "id": "c6-q15",
+      "type": "single",
+      "prompt": "What makes a coding standard real rather than aspirational?",
+      "options": [
+        "Publishing it on the company wiki",
+        "Enforcing it with tooling that runs before review, with the rest as explicit checklist items in the PR template",
+        "Reviewing every pull request personally",
+        "Including it in onboarding"
+      ],
+      "answer": 1,
+      "explanation": "A standard nobody reads is worse than none, because it creates the belief the problem is solved. CI failures and checkboxes are what make a standard hold — and they apply identically to an external agency, which removes the personal element from disagreements."
+    },
+    {
+      "id": "c6-q16",
+      "type": "single",
+      "prompt": "An agency's pull request does not meet your conventions. What is the most effective way to raise it?",
+      "options": [
+        "Explain how you would have written it",
+        "Reference the specific written standard the change fails",
+        "Rewrite it yourself and merge",
+        "Escalate to their account manager"
+      ],
+      "answer": 1,
+      "explanation": "A standard is a fact and resolves in thirty seconds; a preference is an opinion and produces a meeting. That distinction is most of what makes cross-organisation code review work, and it is worth applying even when the two overlap."
+    },
+    {
+      "id": "c6-q17",
+      "type": "single",
+      "prompt": "You are the only internal Shopify developer. Which practice most reduces business risk?",
+      "options": [
+        "More tests for theme JavaScript",
+        "Documentation and runbooks that let someone else operate the platform in your absence",
+        "Higher feature throughput per sprint",
+        "Personally reviewing every agency pull request"
+      ],
+      "answer": 1,
+      "explanation": "A single point of failure who cannot be covered is the largest risk on a solo-owned platform, and documentation is the only lever on it. Tests protect the code; runbooks and inventories protect the business's ability to operate without you.",
+      "points": 2
+    },
+    {
+      "id": "c6-q18",
+      "type": "single",
+      "prompt": "Why should a B2B go-live be watched for a full week rather than a day?",
+      "options": [
+        "Webhooks take a week to stabilise",
+        "Most trade accounts order weekly, so a Monday launch tells you very little until the following Monday",
+        "Shopify caches catalog prices for seven days",
+        "Payment terms take a week to activate"
+      ],
+      "answer": 1,
+      "explanation": "The business cycle defines the observation window, not the deploy. A wholesale channel where half the accounts order on Mondays produces no meaningful signal on a Tuesday — and the terms-order lifecycle only starts revealing problems when the first invoices approach their due dates."
+    }
+  ]
+}

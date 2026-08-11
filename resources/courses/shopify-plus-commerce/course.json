@@ -1,0 +1,96 @@
+{
+  "id": "shopify-plus-commerce",
+  "title": "Shopify Plus Commerce Engineering",
+  "subtitle": "Liquid, Online Store 2.0, Functions, B2B wholesale & Point of Sale",
+  "description": "A six-chapter, thirty-lesson path from \"I can build a website\" to \"I am the internal owner of a Shopify Plus storefront, a B2B wholesale catalog, and a multi-location POS deployment.\"\n\nThis course assumes you already know HTML, CSS, JavaScript and Git, and that you have shipped and deployed real sites. It does **not** re-teach web development. It teaches the platform: **Liquid** and Online Store 2.0 theme architecture, the Ajax and Section Rendering APIs, Admin and Storefront **GraphQL**, **Shopify Functions**, checkout extensibility, **Flow** and **Launchpad**, the **B2B** company/catalog/price-list model, and **POS UI extensions** built to be replicated across a growing retail footprint.\n\nEvery chapter ends with a test, and the course ends with a final exam. A single storefront project — a workwear brand running DTC, wholesale and retail on one Plus organization — is built across all thirty lessons.",
+  "version": "1.0.0",
+  "author": "DeskLearner",
+  "tags": ["Shopify", "Shopify Plus", "Liquid", "B2B", "POS", "GraphQL", "Performance"],
+  "color": "#008060",
+  "estimatedHours": 62,
+  "chapters": [
+    {
+      "id": "chapter-1",
+      "title": "Theme Architecture & Liquid",
+      "summary": "The development environment, the Liquid language, and the Online Store 2.0 architecture everything else in the course sits on.",
+      "lessons": [
+        { "id": "day-01", "title": "The Shopify Development Environment", "file": "lessons/day-01.md", "minutes": 90 },
+        { "id": "day-02", "title": "Liquid as a Language", "file": "lessons/day-02.md", "minutes": 110 },
+        { "id": "day-03", "title": "Theme Architecture: Layouts, Templates, Sections, Blocks", "file": "lessons/day-03.md", "minutes": 120 },
+        { "id": "day-04", "title": "Section Schema & the Theme Editor Contract", "file": "lessons/day-04.md", "minutes": 100 },
+        { "id": "day-05", "title": "Custom Data: Metafields & Metaobjects", "file": "lessons/day-05.md", "minutes": 110 }
+      ],
+      "test": { "id": "test-chapter-1", "title": "Chapter 1 Test: Liquid & Theme Architecture", "file": "tests/test-chapter-1.json" }
+    },
+    {
+      "id": "chapter-2",
+      "title": "Storefront Craft",
+      "summary": "Building the actual shopping experience — responsive layout, framework-free JavaScript, product pages, cart, collections and search.",
+      "lessons": [
+        { "id": "day-06", "title": "Responsive Theme CSS Without a Framework", "file": "lessons/day-06.md", "minutes": 100 },
+        { "id": "day-07", "title": "Theme JavaScript: Web Components & Progressive Enhancement", "file": "lessons/day-07.md", "minutes": 110 },
+        { "id": "day-08", "title": "Product Pages, Variants & Media", "file": "lessons/day-08.md", "minutes": 120 },
+        { "id": "day-09", "title": "Cart, the Ajax API & the Section Rendering API", "file": "lessons/day-09.md", "minutes": 130 },
+        { "id": "day-10", "title": "Collections, Search, Filtering & Brand Storytelling", "file": "lessons/day-10.md", "minutes": 120 }
+      ],
+      "test": { "id": "test-chapter-2", "title": "Chapter 2 Test: Storefront Development", "file": "tests/test-chapter-2.json" }
+    },
+    {
+      "id": "chapter-3",
+      "title": "Performance, APIs & Engineering Practice",
+      "summary": "Core Web Vitals on a real theme, the Admin and Storefront APIs, theme release engineering with Git, and working inside a sprint.",
+      "lessons": [
+        { "id": "day-11", "title": "Core Web Vitals for Shopify Themes", "file": "lessons/day-11.md", "minutes": 110 },
+        { "id": "day-12", "title": "Performance Engineering: Scripts, Apps & Pixels", "file": "lessons/day-12.md", "minutes": 120 },
+        { "id": "day-13", "title": "Shopify APIs: Admin GraphQL, Storefront & Custom Apps", "file": "lessons/day-13.md", "minutes": 130 },
+        { "id": "day-14", "title": "Theme Release Engineering with Git", "file": "lessons/day-14.md", "minutes": 110 },
+        { "id": "day-15", "title": "Sprint Delivery, Jira & the QA Handoff", "file": "lessons/day-15.md", "minutes": 90 }
+      ],
+      "test": { "id": "test-chapter-3", "title": "Chapter 3 Test: Performance, APIs & Delivery", "file": "tests/test-chapter-3.json" }
+    },
+    {
+      "id": "chapter-4",
+      "title": "The Shopify Plus Platform",
+      "summary": "What the Plus tier actually buys you: organization admin, Functions, checkout extensibility, Flow and Launchpad.",
+      "lessons": [
+        { "id": "day-16", "title": "What Shopify Plus Actually Gives You", "file": "lessons/day-16.md", "minutes": 90 },
+        { "id": "day-17", "title": "Shopify Functions (and the Scripts Migration)", "file": "lessons/day-17.md", "minutes": 140 },
+        { "id": "day-18", "title": "Checkout Extensibility", "file": "lessons/day-18.md", "minutes": 130 },
+        { "id": "day-19", "title": "Shopify Flow: Automation as Engineering", "file": "lessons/day-19.md", "minutes": 100 },
+        { "id": "day-20", "title": "Launchpad & Campaign Engineering", "file": "lessons/day-20.md", "minutes": 100 }
+      ],
+      "test": { "id": "test-chapter-4", "title": "Chapter 4 Test: Plus Platform Features", "file": "tests/test-chapter-4.json" }
+    },
+    {
+      "id": "chapter-5",
+      "title": "B2B Wholesale on Plus",
+      "summary": "Companies, catalogs and price lists — and the theme work that turns them into an ordering experience wholesale buyers will actually use.",
+      "lessons": [
+        { "id": "day-21", "title": "The B2B Data Model: Companies, Catalogs & Price Lists", "file": "lessons/day-21.md", "minutes": 110 },
+        { "id": "day-22", "title": "B2B Theme Development", "file": "lessons/day-22.md", "minutes": 120 },
+        { "id": "day-23", "title": "Wholesale Ordering UX: Quick Order & Quantity Rules", "file": "lessons/day-23.md", "minutes": 120 },
+        { "id": "day-24", "title": "Payment Terms, Draft Orders & the Sales Rep Workflow", "file": "lessons/day-24.md", "minutes": 100 },
+        { "id": "day-25", "title": "Extending B2B with Functions & Custom Data", "file": "lessons/day-25.md", "minutes": 110 }
+      ],
+      "test": { "id": "test-chapter-5", "title": "Chapter 5 Test: B2B Wholesale", "file": "tests/test-chapter-5.json" }
+    },
+    {
+      "id": "chapter-6",
+      "title": "POS, Retail & Platform Ownership",
+      "summary": "Point of Sale from configuration through custom extensions, built to replicate across new stores — plus apps, integrations and the ownership habits that hold it all together.",
+      "lessons": [
+        { "id": "day-26", "title": "Shopify POS Fundamentals & Configuration", "file": "lessons/day-26.md", "minutes": 100 },
+        { "id": "day-27", "title": "Building POS UI Extensions", "file": "lessons/day-27.md", "minutes": 130 },
+        { "id": "day-28", "title": "Scaling POS to a Multi-Location Retail Network", "file": "lessons/day-28.md", "minutes": 110 },
+        { "id": "day-29", "title": "Apps, Integrations & Platform Configuration", "file": "lessons/day-29.md", "minutes": 120 },
+        { "id": "day-30", "title": "Owning the Platform: Standards, Partners & Go-Lives", "file": "lessons/day-30.md", "minutes": 120 }
+      ],
+      "test": { "id": "test-chapter-6", "title": "Chapter 6 Test: POS & Platform Ownership", "file": "tests/test-chapter-6.json" }
+    }
+  ],
+  "finalExam": {
+    "id": "final-exam",
+    "title": "Final Exam: Shopify Plus Commerce Engineering",
+    "file": "tests/final-exam.json"
+  }
+}

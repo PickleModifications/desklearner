@@ -1,0 +1,244 @@
+{
+  "id": "test-chapter-3",
+  "title": "Chapter 3 Test: Performance, APIs & Delivery",
+  "description": "Eighteen questions on Core Web Vitals, third-party governance, the Admin and Storefront APIs, theme release engineering and sprint delivery. Aim for 75%.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 35,
+  "questions": [
+    {
+      "id": "c3-q01",
+      "type": "single",
+      "prompt": "A store's Lighthouse score is 91 but field data shows LCP failing at 3.8s. What is the primary reason for the gap?",
+      "options": [
+        "Lighthouse is unreliable and should be ignored",
+        "Lab data is one synthetic run on a fixed profile; field data is the 75th percentile of real devices, networks and cache states",
+        "Field data always lags theme changes by 28 days and is therefore wrong",
+        "The Lighthouse run used a different Shopify region"
+      ],
+      "answer": 1,
+      "explanation": "They measure different things. Lab data is a controlled diagnostic; field data aggregates real visits at the 75th percentile — which on a trade-focused store means mid-range Android phones on poor connections. Field data is what Google ranks on and what the business feels."
+    },
+    {
+      "id": "c3-q02",
+      "type": "ordering",
+      "prompt": "Order the four phases of Largest Contentful Paint, earliest first.",
+      "items": [
+        "Element render delay",
+        "Resource load duration",
+        "Time to First Byte",
+        "Resource load delay"
+      ],
+      "answer": [
+        "Time to First Byte",
+        "Resource load delay",
+        "Resource load duration",
+        "Element render delay"
+      ],
+      "explanation": "Diagnose which phase dominates before changing anything. High TTFB is Liquid render cost; high load delay means the browser discovered the image late; high load duration means the image is too big; high render delay points at render-blocking CSS or fonts.",
+      "points": 3
+    },
+    {
+      "id": "c3-q03",
+      "type": "multi",
+      "prompt": "Which are legitimate ways to improve LCP on a Shopify PDP? Select all that apply.",
+      "options": [
+        "Preload the hero image with fetchpriority=\"high\"",
+        "Remove a nested product.variants loop from a section rendered above it",
+        "Set loading=\"lazy\" on the LCP image",
+        "Correct a `sizes` attribute that requests a 1600px image for a 400px slot"
+      ],
+      "answer": [0, 1, 3],
+      "explanation": "Lazy-loading the LCP element is one of the most reliable ways to fail the metric — it delays discovery and fetch. The other three attack the load-delay, TTFB and load-duration phases respectively.",
+      "points": 2
+    },
+    {
+      "id": "c3-q04",
+      "type": "single",
+      "prompt": "Marketing asks you to paste a new analytics vendor's snippet into theme.liquid. What is the correct response?",
+      "options": [
+        "Add it in the head so it captures everything",
+        "Implement it as a custom web pixel so it runs sandboxed, off the main thread, and respects consent",
+        "Add it deferred at the end of body",
+        "Decline — third-party analytics always harms performance"
+      ],
+      "answer": 1,
+      "explanation": "The Web Pixels API is the supported home for tracking: sandboxed execution, no access to your DOM, consent-aware, and it receives checkout events that theme code cannot see. Declining outright is not the job; routing the request to the right mechanism is."
+    },
+    {
+      "id": "c3-q05",
+      "type": "boolean",
+      "prompt": "A third-party script on the storefront that nobody can attribute to an app or an owner is purely a performance concern.",
+      "answer": false,
+      "explanation": "It is a security finding first. An unattributed script has arbitrary access to your DOM, including account pages and anything typed into a form. Attribute it or remove it — longevity is not attribution."
+    },
+    {
+      "id": "c3-q06",
+      "type": "single",
+      "prompt": "An Admin GraphQL mutation returns HTTP 200 with a populated `userErrors` array. What happened?",
+      "options": [
+        "The mutation applied and logged a warning",
+        "The mutation did not apply — userErrors carries business-logic rejections that do not produce an HTTP error",
+        "The request was throttled",
+        "The API version is deprecated"
+      ],
+      "answer": 1,
+      "explanation": "GraphQL returns 200 for any syntactically valid request. Business validation failures appear in userErrors. An integration that only checks HTTP status silently fails to write data and the gap surfaces weeks later.",
+      "points": 2
+    },
+    {
+      "id": "c3-q07",
+      "type": "single",
+      "prompt": "How does Shopify's GraphQL Admin API rate limiting work?",
+      "options": [
+        "A fixed number of requests per second per app",
+        "A leaky bucket of calculated query cost points, with a maximum capacity and a per-second restore rate",
+        "A daily quota reset at midnight UTC",
+        "Unlimited on Shopify Plus"
+      ],
+      "answer": 1,
+      "explanation": "Cost is calculated per field, charged against a bucket that refills at a constant rate. Every response reports requestedQueryCost, actualQueryCost and throttleStatus, which lets a well-written client back off proactively. Plus gets a larger bucket, not an unlimited one."
+    },
+    {
+      "id": "c3-q08",
+      "type": "multi",
+      "prompt": "Which are correct ways to reduce Admin GraphQL query cost? Select all that apply.",
+      "options": [
+        "Request only the fields you use",
+        "Reduce page size from 250 to 50",
+        "Avoid deeply nested connections",
+        "Switch to REST, which has no cost model"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Cost is calculated from the shape of the query, so narrower field selections, smaller pages and shallower nesting all reduce it. REST has its own request-per-second limit and is the legacy surface — moving to it to dodge cost accounting is not a strategy.",
+      "points": 2
+    },
+    {
+      "id": "c3-q09",
+      "type": "single",
+      "prompt": "You need to export every product with its metafields from a store with 40,000 products. What is the right tool?",
+      "options": [
+        "Paginated GraphQL queries with backoff",
+        "A bulk operation returning JSONL",
+        "The REST products endpoint with a high limit",
+        "The Storefront API"
+      ],
+      "answer": 1,
+      "explanation": "Above a few thousand records, bulk operations are the intended path: one asynchronous job, a downloadable JSONL file, no rate-limit choreography. Note that only one bulk operation of each type runs per store at a time, which needs coordinating with other integrations."
+    },
+    {
+      "id": "c3-q10",
+      "type": "multi",
+      "prompt": "Which rules must a reliable webhook consumer follow? Select all that apply.",
+      "options": [
+        "Verify the HMAC signature on every request",
+        "Respond 200 quickly and process asynchronously",
+        "Be idempotent, because delivery is at-least-once",
+        "Trust that every event will be delivered exactly once"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Unverified endpoints accept forged payloads; slow endpoints get retried and eventually unsubscribed; duplicate deliveries are normal. Because events can also be missed entirely, a reconciliation job is the fourth habit worth adding.",
+      "points": 2
+    },
+    {
+      "id": "c3-q11",
+      "type": "boolean",
+      "prompt": "An Admin API access token may be used from theme JavaScript provided it is scoped to read-only.",
+      "answer": false,
+      "explanation": "A token in a theme is a token in every visitor's browser, and read access to orders and customers is a data breach regardless of write permissions. Storefront needs go through Liquid, the Ajax API, the Storefront API, or an app proxy that calls the Admin API server-side."
+    },
+    {
+      "id": "c3-q12",
+      "type": "short",
+      "prompt": "Name either of the two file paths that hold merchant-owned theme editor data and must not be blindly overwritten on deploy.",
+      "accepted": [
+        "config/settings_data.json",
+        "settings_data.json",
+        "templates/*.json",
+        "templates json",
+        "JSON templates"
+      ],
+      "pattern": "settings_data|templates",
+      "placeholder": "a file path",
+      "explanation": "`config/settings_data.json` holds theme settings values and `templates/*.json` hold the section manifests merchandisers arrange. Deploying stale copies destroys their work — which is why deploy scripts ignore them by default and JSON template changes are coordinated deliberately."
+    },
+    {
+      "id": "c3-q13",
+      "type": "single",
+      "prompt": "After a release, merchandisers report that a promotional section they added to product pages yesterday has vanished. What is the cause?",
+      "options": [
+        "The new section's schema was invalid",
+        "The release included a `templates/product.json` based on an older state, overwriting their theme editor edits",
+        "Publishing a theme resets JSON templates",
+        "The GitHub integration reverted the file"
+      ],
+      "answer": 1,
+      "explanation": "JSON templates are simultaneously code and merchant data. The safe sequence when a template change is genuinely part of a release is: announce a short freeze, pull the current live JSON, merge onto it, deploy that file explicitly, then tell the team what changed."
+    },
+    {
+      "id": "c3-q14",
+      "type": "single",
+      "prompt": "What does connecting the live theme to `main` via Shopify's GitHub integration change about your workflow?",
+      "options": [
+        "Nothing; the integration is one-way from GitHub to the theme",
+        "Merchandiser edits in the theme editor commit back to main, so you must pull before branching and cannot treat main as code-only",
+        "It disables the theme editor for that theme",
+        "It requires all deploys to go through the CLI"
+      ],
+      "answer": 1,
+      "explanation": "The integration is two-way. That is desirable — merchandising work becomes versioned and cannot be silently clobbered — but it means your protected branch receives commits from people who have never used Git, and that JSON-only commits pass CI without your linter having anything to say."
+    },
+    {
+      "id": "c3-q15",
+      "type": "matching",
+      "prompt": "Match each need to the correct Shopify API.",
+      "pairs": [
+        { "left": "Render product data while the page is built", "right": "Liquid" },
+        { "left": "Change a cart line quantity from the browser", "right": "Ajax Cart API" },
+        { "left": "Create a metafield definition", "right": "Admin GraphQL API" },
+        { "left": "React to an order being created", "right": "Webhooks" }
+      ],
+      "explanation": "Choosing the wrong surface is the most common architectural error in Shopify integrations — usually by reaching for the Admin API where Liquid or the Ajax API would do, which then requires exposing a token or building a proxy for no benefit.",
+      "points": 3
+    },
+    {
+      "id": "c3-q16",
+      "type": "single",
+      "prompt": "What is the fastest reliable rollback for a bad theme release?",
+      "options": [
+        "Revert the commit and wait for CI to redeploy",
+        "Publish the previous theme from the theme library",
+        "Restore from the theme editor's version history",
+        "Push the previous tag with the CLI"
+      ],
+      "answer": 1,
+      "explanation": "Publishing a theme is near-instant and requires no build. That is a real platform advantage, and it produces the housekeeping rule: keep the last few release themes rather than tidying them away, because a rollback target that no longer exists is not a rollback."
+    },
+    {
+      "id": "c3-q17",
+      "type": "single",
+      "prompt": "A product manager wants an estimate for \"a 10% discount on orders over £200\" during planning. What is the professional response?",
+      "options": [
+        "Give a small estimate; it is a pricing rule",
+        "Ask which channels it applies to, whether it stacks with other discounts, and propose a time-boxed spike if the implementation route is not already known",
+        "Decline to estimate without a design",
+        "Estimate it as theme work because the cart lives in the theme"
+      ],
+      "answer": 1,
+      "explanation": "Discount logic is a Function or an automatic discount with its own deployment path, not theme code, and the channel scope changes the answer by an order of magnitude. Surfacing the questions that move the estimate — and time-boxing genuine unknowns — is what makes an estimate trustworthy."
+    },
+    {
+      "id": "c3-q18",
+      "type": "single",
+      "prompt": "Which line in a QA handoff most improves the quality of bugs found?",
+      "options": [
+        "The preview link",
+        "\"What should NOT have changed\", plus which channels are affected",
+        "The list of files changed",
+        "The estimate"
+      ],
+      "answer": 1,
+      "explanation": "Without it, QA verifies your change and misses the regression. On a store sharing one catalogue across DTC, B2B and POS, the expensive bugs are precisely the ones in the channel nobody thought to retest."
+    }
+  ]
+}

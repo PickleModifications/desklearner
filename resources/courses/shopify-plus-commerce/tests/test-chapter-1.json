@@ -1,0 +1,234 @@
+{
+  "id": "test-chapter-1",
+  "title": "Chapter 1 Test: Liquid & Theme Architecture",
+  "description": "Eighteen questions on the development environment, Liquid semantics, Online Store 2.0 architecture, schema design and custom data. Aim for 75%. Every question has an explanation in review mode.",
+  "passingScore": 75,
+  "shuffle": true,
+  "timeLimitMinutes": 35,
+  "questions": [
+    {
+      "id": "c1-q01",
+      "type": "single",
+      "prompt": "You run `shopify theme dev` against a store with live customer traffic. What is uploaded, and where?",
+      "options": [
+        "Your local files replace the live theme until you stop the process",
+        "Your local files go to a hidden development theme, proxied only to your localhost preview",
+        "Nothing is uploaded; Liquid is rendered locally",
+        "Your files go to a new unpublished theme visible in the merchant's theme library"
+      ],
+      "answer": 1,
+      "explanation": "`theme dev` creates or reuses a hidden development theme that does not appear in the theme library and does not count against the 20-theme limit. Live traffic is unaffected. The genuinely dangerous command is pushing to the live theme."
+    },
+    {
+      "id": "c1-q02",
+      "type": "single",
+      "prompt": "A product metafield `custom.care` is set to an empty string. What does `{% if product.metafields.custom.care %}` evaluate to?",
+      "options": [
+        "false — empty strings are falsy",
+        "true — only false and nil are falsy in Liquid",
+        "nil, which is neither true nor false",
+        "It raises an UndefinedObject error"
+      ],
+      "answer": 1,
+      "explanation": "Liquid treats only `false` and `nil` as falsy. Empty strings, zero and empty arrays are all truthy. Use `!= blank` for strings and `.size > 0` for arrays. This is the most common cause of empty containers rendering on a storefront."
+    },
+    {
+      "id": "c1-q03",
+      "type": "multi",
+      "prompt": "Which are true of `{% render %}` compared with the deprecated `{% include %}`? Select all that apply.",
+      "options": [
+        "The snippet runs in an isolated scope and sees only globals plus passed arguments",
+        "Variables assigned inside the snippet cannot leak back to the caller",
+        "Its output can be cached because its inputs are explicit",
+        "It can call itself recursively"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Scope isolation is the whole point of `render`: explicit inputs, no leakage, and cacheable output. Recursion is not possible in either form — which is why every Shopify theme hand-unrolls nested navigation to a fixed depth.",
+      "points": 2
+    },
+    {
+      "id": "c1-q04",
+      "type": "single",
+      "prompt": "On a collection page you write `{% for product in collection.products %}{% for variant in product.variants %}…`. What is the primary problem?",
+      "options": [
+        "Nested loops are not allowed in Liquid",
+        "Liquid objects are lazily-evaluated drops, so touching `.variants` per product forces extra server-side data resolution and inflates TTFB",
+        "`product.variants` is not available inside a collection loop",
+        "The inner loop will silently return only the first variant"
+      ],
+      "answer": 1,
+      "explanation": "Nested loops are legal, but `.variants` is a lazily-resolved drop. Reaching into it once per product on a listing page is a well-known cause of slow server render times. Use the precomputed properties — `available`, `price_min`, `price_varies` — instead."
+    },
+    {
+      "id": "c1-q05",
+      "type": "ordering",
+      "prompt": "Put the stages of rendering a Shopify product page into the order they resolve.",
+      "items": [
+        "layout/theme.liquid wraps the output",
+        "Sections render their blocks and settings",
+        "The URL resolves to a template file",
+        "The template lists which sections appear, and in what order"
+      ],
+      "answer": [
+        "The URL resolves to a template file",
+        "The template lists which sections appear, and in what order",
+        "Sections render their blocks and settings",
+        "layout/theme.liquid wraps the output"
+      ],
+      "explanation": "Request → template resolution (including any template suffix) → the template's section manifest → section and block rendering → injection into the layout as content_for_layout. Holding this chain in your head makes almost every 'where does this markup come from' question answerable in seconds.",
+      "points": 3
+    },
+    {
+      "id": "c1-q06",
+      "type": "single",
+      "prompt": "Which file holds the *values* a merchant has chosen in the theme editor's Theme settings panel?",
+      "options": [
+        "config/settings_schema.json",
+        "config/settings_data.json",
+        "templates/index.json",
+        "locales/en.default.schema.json"
+      ],
+      "answer": 1,
+      "explanation": "`settings_schema.json` defines the settings; `settings_data.json` stores the merchant's chosen values and is generated. Pushing a stale local copy over a live store wipes their configuration — which is why release processes ignore it by default."
+    },
+    {
+      "id": "c1-q07",
+      "type": "boolean",
+      "prompt": "A `{% schema %}` block can contain Liquid, so settings can be generated dynamically.",
+      "answer": false,
+      "explanation": "The schema is static JSON. No Liquid, no comments, no trailing commas. Invalid schema fails silently on the storefront while showing an error in the theme editor, which is why Theme Check should run before you blame the editor."
+    },
+    {
+      "id": "c1-q08",
+      "type": "single",
+      "prompt": "A merchandiser reports that changing a block's setting in the theme editor reloads the whole page instead of updating live. What is the first thing to check?",
+      "options": [
+        "Whether `{{ block.shopify_attributes }}` is rendered on the block's wrapper element",
+        "Whether the section has a preset",
+        "Whether the setting uses a dynamic source",
+        "Whether `settings_data.json` is committed"
+      ],
+      "answer": 0,
+      "explanation": "`block.shopify_attributes` emits the data attributes the theme editor needs to target, highlight and live-update a block. Without it the editor falls back to full reloads, which merchandisers experience as a broken theme. The second thing to check is whether your JavaScript listens for `shopify:section:load`.",
+      "points": 2
+    },
+    {
+      "id": "c1-q09",
+      "type": "multi",
+      "prompt": "Which are valid reasons to choose a theme block in `blocks/` over a block defined inside one section's schema? Select all that apply.",
+      "options": [
+        "The same component is needed by several different sections",
+        "The block needs to nest inside other blocks",
+        "You want the component available to app blocks",
+        "The block only ever appears in one specific slideshow"
+      ],
+      "answer": [0, 1],
+      "explanation": "Theme blocks are defined once as their own file, accepted by any section that lists them (or `@theme`), and can nest. A block that only ever appears in one section is correctly a section block. App blocks are a separate concept — you accept them with `{ \"type\": \"@app\" }`.",
+      "points": 2
+    },
+    {
+      "id": "c1-q10",
+      "type": "single",
+      "prompt": "A merchandiser adds your new section from the Add section menu and it renders as an empty grey box. What is the most likely cause?",
+      "options": [
+        "The section is missing `{{ block.shopify_attributes }}`",
+        "The preset supplies no defaults and the code has no placeholder or empty-state fallback",
+        "The schema uses `range` where it should use `number`",
+        "The colour scheme is undefined"
+      ],
+      "answer": 1,
+      "explanation": "A freshly added section renders with only its preset's settings. If the preset sets nothing and the markup assumes a selected image or collection, it renders empty. Defaults, starter blocks in the preset, and `placeholder_svg_tag` fallbacks are the fix."
+    },
+    {
+      "id": "c1-q11",
+      "type": "short",
+      "prompt": "Which required layout object injects Shopify's own scripts — analytics, app script tags and consent hooks — into the document head?",
+      "accepted": ["content_for_header", "{{ content_for_header }}", "content for header"],
+      "pattern": "content_?for_?header",
+      "placeholder": "object name",
+      "explanation": "`content_for_header` must stay in the `<head>`. Removing or relocating it to 'improve performance' breaks app functionality, consent management and analytics in ways that surface weeks later as an unexplainable data discrepancy."
+    },
+    {
+      "id": "c1-q12",
+      "type": "single",
+      "prompt": "You rename a section setting's `id` from `heading_text` to `title` and push. What happens to the merchant's existing configured values?",
+      "options": [
+        "They migrate automatically because the label is unchanged",
+        "They are orphaned — every stored value for that setting is lost, on every instance",
+        "The theme editor prompts the merchant to map old settings to new ones",
+        "Shopify keeps both keys in settings_data.json indefinitely"
+      ],
+      "answer": 1,
+      "explanation": "Setting values are keyed by `id` and there is no migration mechanism. The safe rename is three releases: add the new setting with a Liquid fallback to the old one, have sections re-saved, then remove the old setting.",
+      "points": 2
+    },
+    {
+      "id": "c1-q13",
+      "type": "single",
+      "prompt": "A metafield is clearly populated in the admin, but `{{ product.metafields.custom.rating }}` renders nothing on the storefront. What do you check first?",
+      "options": [
+        "Whether the metafield type supports Liquid output",
+        "Whether the definition has storefront access enabled",
+        "Whether you need `.value`",
+        "Whether the theme is on Online Store 2.0"
+      ],
+      "answer": 1,
+      "explanation": "Storefront visibility is a per-definition flag. Definitions created through the Admin API are not storefront-visible unless access is set explicitly, and the symptom is an apparently empty value. Check the definition before debugging Liquid."
+    },
+    {
+      "id": "c1-q14",
+      "type": "matching",
+      "prompt": "Match each unit of theme code to what it is for.",
+      "pairs": [
+        { "left": "Snippet", "right": "Non-configurable partial called from code with explicit arguments" },
+        { "left": "Section block", "right": "Configurable repeatable child meaningful only inside one section" },
+        { "left": "Theme block", "right": "Configurable component reusable across sections and nestable" },
+        { "left": "Section group", "right": "A JSON file making a layout region — typically header or footer — merchant-rearrangeable" }
+      ],
+      "explanation": "Choosing the right unit is the core architectural judgement of theme work. Snippets are for code reuse, section blocks for in-section configuration, theme blocks for a shared component library, and section groups for making layout regions editable.",
+      "points": 3
+    },
+    {
+      "id": "c1-q15",
+      "type": "single",
+      "prompt": "A certification has a code, a badge image and an explanatory paragraph, and is shared across dozens of products. What is the correct model?",
+      "options": [
+        "A tag per certification, parsed in Liquid",
+        "A list metafield on the product plus a Liquid case statement mapping codes to badges",
+        "A metaobject definition, referenced from products with a list.metaobject_reference metafield",
+        "One collection per certification"
+      ],
+      "answer": 2,
+      "explanation": "The certification has its own fields and is reused, so it is an entity — a metaobject. Tags carry no structure, and a Liquid case statement duplicates content into code where merchandisers cannot maintain it."
+    },
+    {
+      "id": "c1-q16",
+      "type": "fill-blank",
+      "prompt": "Complete the section tags: one renders a single named section; the other renders a merchant-editable group.",
+      "text": "{% {{0}} 'announcement-bar' %}  and  {% {{1}} 'header-group' %}",
+      "blanks": [["section"], ["sections"]],
+      "explanation": "`{% section %}` renders one section statically. `{% sections %}` renders a section group — a JSON file in `sections/` listing sections the merchant can reorder, which is what made headers and footers editable.",
+      "points": 2
+    },
+    {
+      "id": "c1-q17",
+      "type": "single",
+      "prompt": "Why should a section expose a `color_scheme` setting rather than individual `color` pickers?",
+      "options": [
+        "Individual colour pickers are deprecated in Online Store 2.0",
+        "Schemes are defined once in settings_schema.json and emit CSS custom properties, keeping the store coherent and rebrandable",
+        "Colour pickers cannot be bound to dynamic sources",
+        "Colour schemes render faster"
+      ],
+      "answer": 1,
+      "explanation": "A colour scheme group defines a palette once and Shopify generates the CSS custom properties. Per-section colour pickers produce eleven slightly different greens and turn a rebrand into weeks of work."
+    },
+    {
+      "id": "c1-q18",
+      "type": "boolean",
+      "prompt": "Because Liquid fails silently on typos, Theme Check and code review effectively serve as the error handling for a theme.",
+      "answer": true,
+      "explanation": "A misspelled object renders an empty string, a missing snippet renders nothing, and the page still returns 200. There is no runtime exception to catch. Linting in the editor, in CI and in review is the only mechanism that surfaces these before a customer does."
+    }
+  ]
+}

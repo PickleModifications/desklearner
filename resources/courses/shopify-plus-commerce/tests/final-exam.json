@@ -1,0 +1,404 @@
+{
+  "id": "final-exam",
+  "title": "Final Exam: Shopify Plus Commerce Engineering",
+  "description": "Thirty questions across the whole course — Liquid and theme architecture, storefront craft, performance and APIs, the Plus platform, B2B wholesale, POS and platform ownership. Aim for 80%. Sixty minutes.",
+  "passingScore": 80,
+  "shuffle": true,
+  "timeLimitMinutes": 60,
+  "questions": [
+    {
+      "id": "fx-q01",
+      "type": "single",
+      "prompt": "Why do Liquid typos rarely produce visible errors, and what follows from that?",
+      "options": [
+        "They are caught at build time, so nothing follows",
+        "Undefined objects render as empty strings and missing snippets render nothing, with the page still returning 200 — so linting and review are the theme's error handling",
+        "Shopify emails the developer on a render error",
+        "They throw in the theme editor but not on the storefront"
+      ],
+      "answer": 1,
+      "explanation": "There is no runtime exception to catch. Theme Check in the editor, in CI, and a review checklist are the only mechanisms that surface these before a customer does."
+    },
+    {
+      "id": "fx-q02",
+      "type": "multi",
+      "prompt": "Which are true of `{% render %}`? Select all that apply.",
+      "options": [
+        "The snippet sees only globals plus explicitly passed arguments",
+        "Variables assigned inside cannot leak back to the caller",
+        "Its output can be cached because its inputs are explicit",
+        "It supports recursion for nested navigation"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "Scope isolation is the point, and it is what makes output cacheable. Recursion is not possible, which is why every Shopify theme hand-unrolls nested menus to a fixed depth.",
+      "points": 2
+    },
+    {
+      "id": "fx-q03",
+      "type": "single",
+      "prompt": "A section renders as an empty box when a merchandiser adds it from the Add section menu. Most likely cause?",
+      "options": [
+        "Missing `{{ block.shopify_attributes }}`",
+        "The preset supplies no defaults and the markup has no placeholder or empty-state fallback",
+        "The colour scheme is undefined",
+        "The schema uses `range` instead of `number`"
+      ],
+      "answer": 1,
+      "explanation": "A freshly added section renders with only its preset's settings. Defaults, starter blocks in the preset and `placeholder_svg_tag` fallbacks are the quality bar — a section that looks broken on first add gets removed and reported as not working."
+    },
+    {
+      "id": "fx-q04",
+      "type": "single",
+      "prompt": "A certification has a code, a badge image and a description, and is shared across dozens of products. Correct model?",
+      "options": [
+        "A tag per certification parsed in Liquid",
+        "A list metafield plus a Liquid case statement mapping codes to badges",
+        "A metaobject referenced from products by a list.metaobject_reference metafield",
+        "One collection per certification"
+      ],
+      "answer": 2,
+      "explanation": "It has its own fields and is reused, so it is an entity. A case statement duplicates content into code where merchandisers cannot maintain it; tags carry no structure at all."
+    },
+    {
+      "id": "fx-q05",
+      "type": "single",
+      "prompt": "Why is lazy-loading the LCP image one of the most reliable ways to fail that metric?",
+      "options": [
+        "Lazy images are served at lower quality",
+        "It delays the browser's discovery and fetch of the element that defines the metric",
+        "Lazy loading disables srcset",
+        "It forces a layout shift"
+      ],
+      "answer": 1,
+      "explanation": "LCP has four phases, and load delay is one of them. `loading=\"lazy\"` on the hero pushes discovery past the point where the browser would otherwise have started fetching. Eager loading plus a preload with fetchpriority is the fix."
+    },
+    {
+      "id": "fx-q06",
+      "type": "single",
+      "prompt": "A cart holds the same variant twice with different line item properties. A per-line quantity control changes one. Which endpoint?",
+      "options": [
+        "update.js keyed by variant ID",
+        "change.js keyed by the line item key",
+        "add.js with a negative quantity",
+        "clear.js then re-add"
+      ],
+      "answer": 1,
+      "explanation": "update.js is keyed by variant ID and cannot distinguish the two lines. change.js targets a line by its key — the variant ID plus a hash of its properties.",
+      "points": 2
+    },
+    {
+      "id": "fx-q07",
+      "type": "multi",
+      "prompt": "Which are genuine advantages of the Section Rendering API for cart and variant updates? Select all that apply.",
+      "options": [
+        "Pricing and discount logic exists once, in Liquid",
+        "Merchant theme-editor settings apply with no code change",
+        "Function-based and B2B catalog pricing are computed correctly server-side",
+        "It removes the network round trip"
+      ],
+      "answer": [0, 1, 2],
+      "explanation": "It does not remove the round trip — that is its cost. What it removes is the second implementation of pricing logic in JavaScript, which is where drift and B2B pricing errors come from.",
+      "points": 2
+    },
+    {
+      "id": "fx-q08",
+      "type": "single",
+      "prompt": "A Lighthouse score of 91 coexists with field data showing LCP at 3.8s. What is the primary reason?",
+      "options": [
+        "Lighthouse is unreliable",
+        "Lab data is one synthetic run on a fixed profile; field data is the 75th percentile of real devices, networks and cache states",
+        "Field data lags by 28 days and is therefore stale",
+        "The two measure different pages by definition"
+      ],
+      "answer": 1,
+      "explanation": "They measure different things. Field data is what Google ranks on and what a customer on a mid-range Android on a building site actually experiences."
+    },
+    {
+      "id": "fx-q09",
+      "type": "single",
+      "prompt": "Marketing wants a new analytics vendor's snippet in theme.liquid. Correct response?",
+      "options": [
+        "Add it to the head to capture everything",
+        "Implement it as a custom web pixel — sandboxed, off the main thread, consent-aware, and able to see checkout events",
+        "Add it deferred at the end of body",
+        "Decline; third-party analytics always harms performance"
+      ],
+      "answer": 1,
+      "explanation": "Routing the request to the correct mechanism is the job. Declining outright is not, and pasting it into the theme puts a vendor script on your main thread with access to your DOM."
+    },
+    {
+      "id": "fx-q10",
+      "type": "single",
+      "prompt": "An Admin GraphQL mutation returns HTTP 200 with a populated `userErrors` array. What happened?",
+      "options": [
+        "It applied with a warning",
+        "It did not apply — userErrors carries business validation failures that do not produce an HTTP error",
+        "It was throttled",
+        "The API version is deprecated"
+      ],
+      "answer": 1,
+      "explanation": "This is GraphQL's equivalent of Liquid's silent failure. An integration that checks only HTTP status will fail to write data and nobody will notice for weeks.",
+      "points": 2
+    },
+    {
+      "id": "fx-q11",
+      "type": "single",
+      "prompt": "How is Shopify's GraphQL Admin API rate limiting modelled?",
+      "options": [
+        "Requests per second per app",
+        "A leaky bucket of calculated query cost with a maximum capacity and a per-second restore rate",
+        "A daily quota",
+        "Unlimited on Plus"
+      ],
+      "answer": 1,
+      "explanation": "Cost is calculated per field. Every response reports requestedQueryCost, actualQueryCost and throttleStatus, which lets a good client slow down before being throttled. Plus gets a larger bucket, not an unlimited one."
+    },
+    {
+      "id": "fx-q12",
+      "type": "single",
+      "prompt": "After a release, merchandisers report yesterday's promotional section has vanished from product pages. Cause?",
+      "options": [
+        "An invalid schema removed conflicting sections",
+        "The release shipped a `templates/product.json` based on an older state, overwriting theme editor edits",
+        "Publishing resets JSON templates",
+        "The GitHub integration reverted the file"
+      ],
+      "answer": 1,
+      "explanation": "JSON templates are code and merchant data simultaneously. When a template change is genuinely part of a release: announce a freeze, pull current live JSON, merge onto it, deploy that file explicitly, then tell the team.",
+      "points": 2
+    },
+    {
+      "id": "fx-q13",
+      "type": "single",
+      "prompt": "What changes when the live theme is connected to `main` via the GitHub integration?",
+      "options": [
+        "Nothing; it is one-way",
+        "Theme editor changes commit back to main, so you must pull before branching and cannot treat main as code-only",
+        "The theme editor is disabled",
+        "All deploys must use the CLI"
+      ],
+      "answer": 1,
+      "explanation": "The two-way sync is desirable — merchandising work becomes versioned and cannot be silently clobbered — but your protected branch now receives commits from people who have never used Git."
+    },
+    {
+      "id": "fx-q14",
+      "type": "ordering",
+      "prompt": "Order the stages of rendering a Shopify product page.",
+      "items": [
+        "Sections render their blocks and settings",
+        "The URL resolves to a template file",
+        "layout/theme.liquid wraps the output",
+        "The template lists which sections appear, in what order"
+      ],
+      "answer": [
+        "The URL resolves to a template file",
+        "The template lists which sections appear, in what order",
+        "Sections render their blocks and settings",
+        "layout/theme.liquid wraps the output"
+      ],
+      "explanation": "Holding this chain in your head makes almost every 'where does this markup come from' question answerable in seconds — including when a template suffix is routing to an alternate template.",
+      "points": 3
+    },
+    {
+      "id": "fx-q15",
+      "type": "single",
+      "prompt": "Why can a Shopify Function not query your ERP at run time?",
+      "options": [
+        "Rate limits",
+        "Functions run sandboxed as WebAssembly with no network access, a strict instruction budget, and a determinism requirement",
+        "The Admin API does not expose ERP data",
+        "It can, from Rust only"
+      ],
+      "answer": 1,
+      "explanation": "The sandbox is what makes Functions safe inside the checkout path. External data must already be on the store, typically synced into a metafield and read through the input query."
+    },
+    {
+      "id": "fx-q16",
+      "type": "single",
+      "prompt": "A discount Function receives a malformed configuration metafield. Correct behaviour?",
+      "options": [
+        "Throw so the error is visible",
+        "Return no discount — fail closed",
+        "Apply a default discount",
+        "Retry with a lenient parser"
+      ],
+      "answer": 1,
+      "explanation": "A missing discount is a support ticket; an unintended discount is real money applied to every affected order until someone notices. Write the failure path first and make it the safe one.",
+      "points": 2
+    },
+    {
+      "id": "fx-q17",
+      "type": "matching",
+      "prompt": "Match each requirement to the correct platform mechanism.",
+      "pairs": [
+        { "left": "Different prices for a wholesale tier", "right": "B2B catalog and price list" },
+        { "left": "Hide express shipping for hazardous goods", "right": "Delivery customization Function" },
+        { "left": "Capture a delivery date at checkout", "right": "Checkout UI extension writing a cart attribute" },
+        { "left": "Notify a sales rep when a large order arrives", "right": "Shopify Flow" }
+      ],
+      "explanation": "Prices are catalogs, rules are Functions, checkout content and fields are UI extensions, reactions are Flow. Most defects in a multi-channel implementation come from mixing these up.",
+      "points": 3
+    },
+    {
+      "id": "fx-q18",
+      "type": "single",
+      "prompt": "In Shopify's native B2B model, at what level is pricing resolved?",
+      "options": ["The company", "The company location", "The company contact", "The customer tag"],
+      "answer": 1,
+      "explanation": "Catalogs are assigned to company locations, so one company's branches can be on different tiers. This is why a tag-based wholesale implementation cannot be retrofitted onto a real distribution business."
+    },
+    {
+      "id": "fx-q19",
+      "type": "boolean",
+      "prompt": "Native B2B can be enabled on a store still using the classic customer account system.",
+      "answer": false,
+      "explanation": "B2B requires the newer customer accounts; classic has nowhere for company context to live. On an inherited store this migration is a prerequisite, and it changes login flows and all account page work."
+    },
+    {
+      "id": "fx-q20",
+      "type": "single",
+      "prompt": "A £500 trade minimum is enforced by JavaScript in the cart. A rep creates a £300 draft order. What happens?",
+      "options": [
+        "It is rejected — minimums apply account-wide",
+        "It proceeds; theme validation does not apply to draft orders, the API or POS",
+        "Shopify enforces it once a company is attached",
+        "The buyer is blocked at the invoice page"
+      ],
+      "answer": 1,
+      "explanation": "Anything commercially meaningful belongs in a cart and checkout validation Function. Being able to state which of your rules are platform-enforced and which are theme-enforced is a real architectural artefact.",
+      "points": 2
+    },
+    {
+      "id": "fx-q21",
+      "type": "single",
+      "prompt": "Which Flow trigger silently stops firing once payment terms are introduced?",
+      "options": ["Order created", "Order paid", "Company created", "Fulfilment created"],
+      "answer": 1,
+      "explanation": "A terms order is created unpaid, so payment-keyed automations never fire — with no error, just orders quietly not reaching the warehouse. Auditing every automation and report keyed on payment is the most important B2B launch task.",
+      "points": 2
+    },
+    {
+      "id": "fx-q22",
+      "type": "single",
+      "prompt": "A quick order grid collects quantities for 40 variants. How should it add them?",
+      "options": [
+        "One request per line, sequentially",
+        "One /cart/add.js request with an items array",
+        "Forty parallel requests",
+        "A form POST per line"
+      ],
+      "answer": 1,
+      "explanation": "One round trip, no rate limiting, and no partial cart to reconcile after a mid-sequence failure. Per-line validation errors come back identified so you can show them against the offending row."
+    },
+    {
+      "id": "fx-q23",
+      "type": "single",
+      "prompt": "Where should a per-account free-carriage threshold live?",
+      "options": [
+        "Hard-coded in the Function",
+        "In a company metafield read by the Function's input query",
+        "In a theme setting",
+        "In a discount code"
+      ],
+      "answer": 1,
+      "explanation": "The recurring principle of the whole course: put variation in data, not code. Sales ops changes a metafield; one Function serves every account; nobody deploys."
+    },
+    {
+      "id": "fx-q24",
+      "type": "single",
+      "prompt": "A POS UI extension needs privileged store data. What is the correct trust boundary?",
+      "options": [
+        "An Admin API token embedded in the extension",
+        "A session token from the extension, verified by your backend, which makes the Admin API call",
+        "The POS cart API",
+        "A public Storefront API token"
+      ],
+      "answer": 1,
+      "explanation": "The extension runs on a device in a shop and must never hold an Admin token. This is the same boundary as an app proxy on the storefront.",
+      "points": 2
+    },
+    {
+      "id": "fx-q25",
+      "type": "single",
+      "prompt": "A business will open eight stores in two years. Which decision at store one most reduces the cost of store eight?",
+      "options": [
+        "POS Pro from the start",
+        "Location-specific data in metafields or metaobjects, and no hard-coded location IDs anywhere",
+        "Identical hardware everywhere",
+        "A separate Shopify store per location"
+      ],
+      "answer": 1,
+      "explanation": "If store details are data and nothing references a location by ID, opening a store is a JSON file, a script run and a runbook. Otherwise every opening is a development project.",
+      "points": 2
+    },
+    {
+      "id": "fx-q26",
+      "type": "multi",
+      "prompt": "Which rules make a webhook consumer reliable? Select all that apply.",
+      "options": [
+        "Verify the HMAC signature",
+        "Respond 200 quickly and process asynchronously",
+        "Be idempotent, because delivery is at-least-once",
+        "Reconcile on a schedule, because events can be missed"
+      ],
+      "answer": [0, 1, 2, 3],
+      "explanation": "All four. Unverified endpoints accept forged payloads, slow endpoints get retried then unsubscribed, duplicates are normal, and reconciliation is how you find the gaps before finance does.",
+      "points": 3
+    },
+    {
+      "id": "fx-q27",
+      "type": "single",
+      "prompt": "Which app evaluation question is most often skipped and most often expensive on a three-channel store?",
+      "options": [
+        "Monthly cost",
+        "Does it support B2B and POS, or only DTC?",
+        "Review count",
+        "Design quality"
+      ],
+      "answer": 1,
+      "explanation": "Most apps are DTC-only. On a store sharing one catalogue across three channels, a pricing or badging app that ignores catalog pricing shows a wrong price to a trade buyer."
+    },
+    {
+      "id": "fx-q28",
+      "type": "single",
+      "prompt": "What makes an engineering standard real rather than aspirational?",
+      "options": [
+        "Publishing it on the wiki",
+        "Tooling that fails a build, plus explicit checklist items in the PR template — applied identically to internal and external contributors",
+        "Personally reviewing everything",
+        "Covering it in onboarding"
+      ],
+      "answer": 1,
+      "explanation": "Enforcement is the whole difference. It also depersonalises cross-organisation review: a failed check is a fact, whereas a preference is an opinion that produces a meeting."
+    },
+    {
+      "id": "fx-q29",
+      "type": "single",
+      "prompt": "As the only internal Shopify developer, which practice most reduces business risk?",
+      "options": [
+        "More automated tests",
+        "Documentation and runbooks that let someone else operate the platform in your absence",
+        "Higher sprint throughput",
+        "Reviewing every agency PR personally"
+      ],
+      "answer": 1,
+      "explanation": "A bus factor of one is the largest risk on a solo-owned platform, and inventories, runbooks and decision records are the only lever on it. Tests protect the code; documentation protects the business's ability to run without you.",
+      "points": 2
+    },
+    {
+      "id": "fx-q30",
+      "type": "short",
+      "prompt": "Name the two file paths that hold merchant-owned theme editor data and must never be blindly overwritten on deploy. Either one is accepted.",
+      "accepted": [
+        "config/settings_data.json",
+        "settings_data.json",
+        "templates/*.json",
+        "JSON templates",
+        "templates json"
+      ],
+      "pattern": "settings_data|templates",
+      "placeholder": "a file path",
+      "explanation": "`config/settings_data.json` holds theme settings values; `templates/*.json` hold the section manifests merchandisers arrange. Both are simultaneously code and production data, which is the single most distinctive operational hazard in Shopify theme development."
+    }
+  ]
+}
