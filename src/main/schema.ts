@@ -49,6 +49,41 @@ export const courseManifestSchema = z.object({
   finalExam: testRef.optional()
 })
 
+/**
+ * The outline shape the authoring model must emit. Deliberately looser than
+ * `courseManifestSchema` — there are no file paths yet, because nothing has
+ * been written to disk at plan time.
+ */
+export const coursePlanSchema = z.object({
+  id: slug,
+  title: z.string().min(1),
+  subtitle: z.string().optional(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/i)
+    .optional(),
+  chapters: z
+    .array(
+      z.object({
+        id: slug,
+        title: z.string().min(1),
+        summary: z.string().default(''),
+        lessons: z
+          .array(
+            z.object({
+              id: slug,
+              title: z.string().min(1),
+              summary: z.string().default('')
+            })
+          )
+          .min(1)
+      })
+    )
+    .min(1)
+})
+
 const baseQuestion = {
   id: z.string().min(1),
   prompt: z.string().min(1),

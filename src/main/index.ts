@@ -13,6 +13,7 @@ import {
   settingsStore
 } from './ipc'
 import { abortAll } from './ai'
+import { abortAllJobs } from './courseGen'
 import { findCourse, resolveInPack } from './content'
 import { writeBackup } from './backups'
 
@@ -401,6 +402,7 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     abortAll()
+    abortAllJobs()
     flushStores()
   })
 }

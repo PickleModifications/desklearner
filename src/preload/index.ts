@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { CH } from '@shared/channels'
 import type {
   ChatState,
+  CourseBrief,
+  CourseBuildRequest,
+  CourseGenEvent,
   DeskLearnerApi,
   ProgressState,
   Settings,
@@ -74,6 +77,17 @@ const api: DeskLearnerApi = {
       const handler = (_e: unknown, event: TeacherStreamEvent): void => cb(event)
       ipcRenderer.on(CH.aiStreamEvent, handler)
       return () => ipcRenderer.removeListener(CH.aiStreamEvent, handler)
+    }
+  },
+
+  courseGen: {
+    plan: (brief: CourseBrief) => ipcRenderer.invoke(CH.courseGenPlan, brief),
+    build: (request: CourseBuildRequest) => ipcRenderer.invoke(CH.courseGenBuild, request),
+    abort: (jobId: string) => ipcRenderer.invoke(CH.courseGenAbort, jobId),
+    onEvent: (cb) => {
+      const handler = (_e: unknown, event: CourseGenEvent): void => cb(event)
+      ipcRenderer.on(CH.courseGenEvent, handler)
+      return () => ipcRenderer.removeListener(CH.courseGenEvent, handler)
     }
   },
 

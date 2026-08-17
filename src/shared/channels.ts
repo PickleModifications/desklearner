@@ -41,6 +41,11 @@ export const CH = {
   aiPickAttachments: 'ai:pick-attachments',
   aiReadAttachment: 'ai:read-attachment',
 
+  courseGenPlan: 'coursegen:plan',
+  courseGenBuild: 'coursegen:build',
+  courseGenAbort: 'coursegen:abort',
+  courseGenEvent: 'coursegen:event',
+
   chatsGet: 'chats:get',
   chatsSet: 'chats:set',
   chatsClear: 'chats:clear',

@@ -1,9 +1,55 @@
 import { useState } from 'react'
 import { AlertTriangle, ChevronRight, Sparkles } from 'lucide-react'
-import type { TeacherAttachment, TeacherMessage } from '@shared/types'
+import type { CourseBrief, TeacherAttachment, TeacherMessage } from '@shared/types'
 import { Markdown } from '@/markdown/Markdown'
+import { useCourseGen } from '@/stores/courseGen'
+import { useUi } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import { AttachmentChip } from './AttachmentChip'
+
+/**
+ * A course the Teacher offered to build. Nothing is generated until the learner
+ * opens it and confirms — this is an invitation into the Create panel, not a job.
+ */
+function CourseProposalCard({ proposal }: { proposal: CourseBrief }): React.JSX.Element {
+  const openPanel = useCourseGen((s) => s.openPanel)
+  const closeTeacher = useUi((s) => s.setTeacherOpen)
+
+  const lessons = proposal.chapters * proposal.lessonsPerChapter
+
+  return (
+    <div
+      className="mt-2 rounded-xl border border-line p-3"
+      style={{ background: 'var(--surface)' }}
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+          style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}
+        >
+          <Sparkles size={13} />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-semibold">{proposal.topic}</div>
+          <div className="mt-0.5 text-[11.5px] text-ink-subtle">
+            {proposal.chapters} chapters · {lessons} lessons · {proposal.difficulty}
+            {proposal.includeTests && ' · with tests'}
+          </div>
+        </div>
+      </div>
+
+      <button
+        className="btn btn-primary mt-2.5 h-7 w-full text-[12px]"
+        onClick={() => {
+          closeTeacher(false)
+          openPanel(proposal)
+        }}
+      >
+        Review and build
+      </button>
+    </div>
+  )
+}
 
 /** Collapsible summary of the model's reasoning, shown above its answer. */
 function ThinkingDisclosure({
@@ -96,6 +142,7 @@ export function TeacherBubble({
           <Markdown className="!max-w-none" style={{ ['--reader-size' as string]: '13px' }}>
             {message.text}
           </Markdown>
+          {message.proposal && <CourseProposalCard proposal={message.proposal} />}
           {message.error && (
             <p className="mt-1 text-[11.5px]" style={{ color: 'var(--danger)' }}>
               {message.error}
@@ -112,12 +159,14 @@ export function StreamingBubble({
   text,
   thinking,
   waiting,
-  showThinking
+  showThinking,
+  proposal
 }: {
   text: string
   thinking: string
   waiting: boolean
   showThinking: boolean
+  proposal?: CourseBrief
 }): React.JSX.Element {
   return (
     <div className="w-full">
@@ -128,7 +177,8 @@ export function StreamingBubble({
           {text}
         </Markdown>
       ) : (
-        waiting && (
+        waiting &&
+        !proposal && (
           <div className="teacher-dots flex items-center gap-1 py-1" aria-label="Thinking">
             <span />
             <span />
@@ -136,6 +186,8 @@ export function StreamingBubble({
           </div>
         )
       )}
+
+      {proposal && <CourseProposalCard proposal={proposal} />}
     </div>
   )
 }

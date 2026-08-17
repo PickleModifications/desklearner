@@ -28,7 +28,8 @@ async function locatePackRoot(dir: string): Promise<string | null> {
   return null
 }
 
-async function installFrom(sourceDir: string): Promise<ImportResult> {
+/** Validates a staged pack directory and copies it into the user's course folder. */
+export async function installPackFrom(sourceDir: string): Promise<ImportResult> {
   const root = await locatePackRoot(sourceDir)
   if (!root) return { ok: false, error: 'No course.json found in the selected folder' }
 
@@ -65,7 +66,7 @@ export async function importPackFromFolder(win: BrowserWindow): Promise<ImportRe
   })
   if (picked.canceled || !picked.filePaths[0]) return { ok: false }
   try {
-    return await installFrom(picked.filePaths[0])
+    return await installPackFrom(picked.filePaths[0])
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }
@@ -82,7 +83,7 @@ export async function importPackFromArchive(win: BrowserWindow): Promise<ImportR
   const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'desklearner-pack-'))
   try {
     await extractZip(picked.filePaths[0], staging)
-    return await installFrom(staging)
+    return await installPackFrom(staging)
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   } finally {

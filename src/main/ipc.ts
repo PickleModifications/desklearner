@@ -8,6 +8,8 @@ import {
   EMPTY_PROGRESS,
   type AppInfo,
   type ChatState,
+  type CourseBrief,
+  type CourseBuildRequest,
   type ExportBundle,
   type ProgressState,
   type Settings,
@@ -16,6 +18,7 @@ import {
 } from '@shared/types'
 import { JsonStore } from './store'
 import { abort as abortAiRequest, invalidateClient, streamTeacher } from './ai'
+import { abortJob, buildCourse, planCourse } from './courseGen'
 import { gc as gcAttachments, pickAttachments, readAttachment, saveAttachments } from './attachments'
 import { clearKey, getKeyStatus, setKey } from './secrets'
 import {
@@ -181,6 +184,21 @@ export function registerIpc(): void {
 
   ipcMain.handle(CH.aiAbort, (_e, requestId: string) => {
     abortAiRequest(requestId)
+  })
+
+  /* ------------------------------------------------------- course gen */
+  ipcMain.handle(CH.courseGenPlan, (_e, brief: CourseBrief) => planCourse(brief))
+
+  ipcMain.handle(CH.courseGenBuild, (e, request: CourseBuildRequest) => {
+    const win = windowFrom(e)
+    if (!win) return { ok: false, error: 'No window' }
+    // Fire and forget: a build runs for minutes and reports on the push channel.
+    void buildCourse(win, request)
+    return { ok: true }
+  })
+
+  ipcMain.handle(CH.courseGenAbort, (_e, jobId: string) => {
+    abortJob(jobId)
   })
 
   /* -------------------------------------------------------------- chats */

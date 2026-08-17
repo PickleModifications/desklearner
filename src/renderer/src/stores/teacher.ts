@@ -3,6 +3,7 @@ import {
   EMPTY_CHATS,
   type AiKeyStatus,
   type ChatState,
+  type CourseBrief,
   type PendingAttachment,
   type TeacherContext,
   type TeacherMessage,
@@ -20,6 +21,8 @@ export interface StreamingState {
   thinking: string
   /** True until the first token of either kind arrives. */
   waiting: boolean
+  /** A course the Teacher offered mid-turn; attached to the finished message. */
+  proposal?: CourseBrief
 }
 
 interface TeacherStore {
@@ -223,19 +226,25 @@ export const useTeacher = create<TeacherStore>((set, get) => ({
       return
     }
 
+    if (event.type === 'course-proposal') {
+      set({ streaming: { ...streaming, proposal: event.proposal, waiting: false } })
+      return
+    }
+
     const { state, activeTitle } = get()
     const message: TeacherMessage = {
       id: newId(),
       role: 'assistant',
       text: streaming.text,
       thinking: streaming.thinking.trim() || undefined,
+      proposal: streaming.proposal,
       createdAt: new Date().toISOString(),
       error: event.type === 'error' ? event.message : undefined
     }
 
     // A stopped generation keeps whatever arrived; an error with nothing
     // streamed still needs a bubble so the learner sees what went wrong.
-    if (event.type === 'done' && !message.text.trim() && !message.thinking) {
+    if (event.type === 'done' && !message.text.trim() && !message.thinking && !message.proposal) {
       set({ streaming: null })
       return
     }

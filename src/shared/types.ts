@@ -347,6 +347,8 @@ export interface TeacherMessage {
   /** Summarised reasoning, when the model produced any. */
   thinking?: string
   attachments?: TeacherAttachment[]
+  /** A course the Teacher offered to build, rendered as a card under the answer. */
+  proposal?: CourseBrief
   createdAt: string
   error?: string
 }
@@ -438,8 +440,82 @@ export interface TeacherSendResult {
 export type TeacherStreamEvent =
   | { requestId: string; type: 'thinking-delta'; text: string }
   | { requestId: string; type: 'text-delta'; text: string }
+  | { requestId: string; type: 'course-proposal'; proposal: CourseBrief }
   | { requestId: string; type: 'done'; stopReason: string | null; model: string }
   | { requestId: string; type: 'error'; message: string }
+
+/* ------------------------------------------------------------------ *
+ * AI course authoring
+ * ------------------------------------------------------------------ */
+
+export type CourseDifficulty = 'beginner' | 'intermediate' | 'advanced'
+
+/** What the learner asked for. The whole course is derived from this. */
+export interface CourseBrief {
+  topic: string
+  /** Who the course is for, and what they already know. */
+  audience?: string
+  /** What the learner wants to be able to do at the end. */
+  goals?: string
+  difficulty: CourseDifficulty
+  chapters: number
+  lessonsPerChapter: number
+  minutesPerLesson: number
+  includeTests: boolean
+  includeFinalExam: boolean
+}
+
+export const DEFAULT_COURSE_BRIEF: CourseBrief = {
+  topic: '',
+  difficulty: 'intermediate',
+  chapters: 4,
+  lessonsPerChapter: 5,
+  minutesPerLesson: 45,
+  includeTests: true,
+  includeFinalExam: true
+}
+
+export interface CoursePlanLesson {
+  id: string
+  title: string
+  /** One or two sentences telling the lesson writer what this lesson covers. */
+  summary: string
+}
+
+export interface CoursePlanChapter {
+  id: string
+  title: string
+  summary: string
+  lessons: CoursePlanLesson[]
+}
+
+/** The outline the model produced, reviewable and editable before anything is written. */
+export interface CoursePlan {
+  id: string
+  title: string
+  subtitle?: string
+  description?: string
+  tags?: string[]
+  color?: string
+  chapters: CoursePlanChapter[]
+}
+
+export interface CoursePlanResult {
+  ok: boolean
+  plan?: CoursePlan
+  error?: string
+}
+
+export interface CourseBuildRequest {
+  jobId: string
+  plan: CoursePlan
+  brief: CourseBrief
+}
+
+export type CourseGenEvent =
+  | { jobId: string; type: 'progress'; done: number; total: number; label: string }
+  | { jobId: string; type: 'done'; courseId: string; title: string }
+  | { jobId: string; type: 'error'; message: string }
 
 export interface AiKeyStatus {
   configured: boolean
@@ -544,6 +620,14 @@ export interface DeskLearnerApi {
     pickAttachments(): Promise<{ accepted: PendingAttachment[]; rejected: string[] }>
     readAttachment(file: string): Promise<string | null>
     onStreamEvent(cb: (event: TeacherStreamEvent) => void): () => void
+  }
+  courseGen: {
+    /** One call: turns a brief into a reviewable outline. */
+    plan(brief: CourseBrief): Promise<CoursePlanResult>
+    /** Fire and forget — progress arrives on `onEvent`. */
+    build(request: CourseBuildRequest): Promise<{ ok: boolean; error?: string }>
+    abort(jobId: string): Promise<void>
+    onEvent(cb: (event: CourseGenEvent) => void): () => void
   }
   chats: {
     get(): Promise<ChatState>

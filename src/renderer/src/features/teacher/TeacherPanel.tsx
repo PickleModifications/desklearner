@@ -251,6 +251,7 @@ export function TeacherPanel(): React.JSX.Element | null {
                   thinking={streaming.thinking}
                   waiting={streaming.waiting}
                   showThinking={showThinking}
+                  proposal={streaming.proposal}
                 />
               )}
             </div>

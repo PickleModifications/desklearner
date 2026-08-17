@@ -1,26 +1,111 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Clock, FileQuestion, FolderPlus, Library, TriangleAlert } from 'lucide-react'
+import {
+  BookOpen,
+  Clock,
+  FileQuestion,
+  FolderPlus,
+  Library,
+  Plus,
+  Sparkles,
+  TriangleAlert
+} from 'lucide-react'
 import { EmptyState, Page, PageHeader } from '@/components/Page'
 import { ProgressBar } from '@/components/ProgressRing'
 import { useContent } from '@/stores/content'
+import { useCourseGen } from '@/stores/courseGen'
 import { useProgress } from '@/stores/progress'
 import { courseStats } from '@/lib/courseStats'
 import { formatMinutes } from '@/lib/utils'
 
+/**
+ * "Add a course" is the one entry point learners look for, so both ways in
+ * hang off it — generating a new one, and importing a pack from disk.
+ */
+function AddCourseMenu({ onCreate }: { onCreate: () => void }): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent): void => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        className="btn btn-primary"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Plus size={14} /> Add a course
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-30 mt-1.5 w-64 overflow-hidden rounded-xl border border-line shadow-e3"
+          style={{ background: 'var(--bg-elevated)' }}
+        >
+          <button
+            role="menuitem"
+            className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface-2)]"
+            onClick={() => {
+              setOpen(false)
+              onCreate()
+            }}
+          >
+            <Sparkles size={15} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
+            <span>
+              <span className="block text-[12.5px] font-medium">Create with AI</span>
+              <span className="block text-[11.5px] text-ink-subtle">
+                Describe a topic and have a full course written for you
+              </span>
+            </span>
+          </button>
+          <Link
+            role="menuitem"
+            to="/settings#content"
+            className="flex w-full items-start gap-2.5 border-t border-line px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface-2)]"
+            onClick={() => setOpen(false)}
+          >
+            <FolderPlus size={15} className="mt-0.5 shrink-0 text-ink-subtle" />
+            <span>
+              <span className="block text-[12.5px] font-medium">Import a course pack</span>
+              <span className="block text-[11.5px] text-ink-subtle">
+                From a folder or a .zip on this machine
+              </span>
+            </span>
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function LibraryPage(): React.JSX.Element {
   const { index, loaded } = useContent()
   const progress = useProgress((s) => s.state)
+  const openCreate = useCourseGen((s) => s.openPanel)
 
   return (
     <Page wide>
       <PageHeader
         title="Library"
         subtitle={`${index.courses.length} course${index.courses.length === 1 ? '' : 's'} installed — everything stored on this machine`}
-        actions={
-          <Link to="/settings#content" className="btn">
-            <FolderPlus size={14} /> Add a course
-          </Link>
-        }
+        actions={<AddCourseMenu onCreate={() => openCreate()} />}
       />
 
       {index.broken.length > 0 && (
@@ -28,7 +113,11 @@ export function LibraryPage(): React.JSX.Element {
           className="mb-6 flex items-start gap-2.5 rounded-lg border px-4 py-3 text-[13px]"
           style={{ background: 'var(--warning-soft)', borderColor: 'var(--warning)' }}
         >
-          <TriangleAlert size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--warning)' }} />
+          <TriangleAlert
+            size={16}
+            className="mt-0.5 shrink-0"
+            style={{ color: 'var(--warning)' }}
+          />
           <div>
             <div className="font-medium">
               {index.broken.length} course pack{index.broken.length === 1 ? '' : 's'} could not be
@@ -50,12 +139,17 @@ export function LibraryPage(): React.JSX.Element {
       ) : index.courses.length === 0 ? (
         <EmptyState
           icon={<Library size={30} />}
-          title="No courses installed"
-          description="Course packs are folders of markdown files. Import one from Settings → Content."
+          title="No courses yet"
+          description="Describe something you want to learn and have a course written for you, or import a course pack you already have."
           action={
-            <Link to="/settings#content" className="btn btn-primary">
-              Open content settings
-            </Link>
+            <div className="flex items-center gap-2">
+              <button className="btn btn-primary" onClick={() => openCreate()}>
+                <Sparkles size={14} /> Create with AI
+              </button>
+              <Link to="/settings#content" className="btn">
+                Import a pack
+              </Link>
+            </div>
           }
         />
       ) : (
@@ -117,6 +211,22 @@ export function LibraryPage(): React.JSX.Element {
               </Link>
             )
           })}
+
+          <button
+            onClick={() => openCreate()}
+            className="card group flex min-h-[180px] flex-col items-center justify-center gap-2 border-dashed px-4 py-6 text-center transition-colors hover:border-accent-border"
+          >
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-105"
+              style={{ background: 'var(--accent-soft)', color: 'var(--accent-text)' }}
+            >
+              <Plus size={20} />
+            </span>
+            <span className="text-[13.5px] font-medium">Create with AI</span>
+            <span className="max-w-[16rem] text-[11.5px] text-ink-subtle">
+              Turn any topic into a full course with lessons and tests
+            </span>
+          </button>
         </div>
       )}
     </Page>

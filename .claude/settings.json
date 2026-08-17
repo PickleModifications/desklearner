@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm run package 2>&1)",
+      "PowerShell(git tag -a v1.1.0 -m \"DeskLearner v1.1.0\")",
+      "PowerShell(git push origin main)",
+      "PowerShell(git push origin v1.1.0)"
+    ]
+  }
+}

@@ -1,9 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { BetaContentBlockParam, BetaMessageParam } from '@anthropic-ai/sdk/resources/beta'
+import type {
+  BetaContentBlockParam,
+  BetaMessageParam,
+  BetaToolUnion
+} from '@anthropic-ai/sdk/resources/beta'
 import type { BrowserWindow } from 'electron'
 import { CH } from '@shared/channels'
 import { fenceLanguageFor, isImageMediaType } from '@shared/attachments'
 import type {
+  CourseBrief,
   PendingAttachment,
   TeacherAttachment,
   TeacherContext,
@@ -14,8 +19,11 @@ import type {
 import { readAttachment } from './attachments'
 import { readKey } from './secrets'
 
-const MODEL = 'claude-opus-5'
+export const MODEL = 'claude-opus-5'
 const MAX_TOKENS = 16_000
+
+/** One extra round trip, so the Teacher can speak after proposing a course. */
+const MAX_TOOL_ROUNDS = 2
 
 /**
  * How many of the most recent attachment-bearing user turns get their bytes
@@ -31,7 +39,7 @@ export function invalidateClient(): void {
   client = null
 }
 
-function getClient(): Anthropic | null {
+export function getClient(): Anthropic | null {
   if (client) return client
   const apiKey = readKey()
   if (!apiKey) return null
@@ -69,7 +77,79 @@ Use the course outline and completed lessons to place answers in context. Do not
 
 Whenever you refer to another lesson or test, link it using its exact outline id: [Lesson](lesson:id) or [Test](test:id). Never invent ids or link the lesson currently open.
 
-Read attached screenshots, diagrams, PDFs, and files carefully and work from what is actually shown. If something is unreadable or ambiguous, say so.`;
+Read attached screenshots, diagrams, PDFs, and files carefully and work from what is actually shown. If something is unreadable or ambiguous, say so.
+
+**Building a course.** DeskLearner can generate a whole new course. Call \`propose_course\` when the learner asks for one ("build me a course on X", "can you make a course about Y"), or when they say a topic sits outside this course and they want to study it properly. The tool does not build anything — it shows the learner a card they can review, edit and confirm. Infer the shape from what they said and from what you know about their level; only ask a follow-up question if the topic itself is unclear. After calling it, say in one or two sentences what you proposed and that they can adjust it before building. Do not call it for a question you can simply answer.`
+
+const PROPOSE_COURSE_TOOL: BetaToolUnion = {
+  name: 'propose_course',
+  description:
+    'Offer to build a new DeskLearner course. Shows the learner an editable proposal card; it does not generate anything until they confirm.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      topic: {
+        type: 'string',
+        description:
+          'What the course teaches, as a short phrase. e.g. "Rust ownership and lifetimes".'
+      },
+      audience: {
+        type: 'string',
+        description: 'Who it is for and what they already know, in one sentence.'
+      },
+      goals: {
+        type: 'string',
+        description: 'What the learner should be able to do by the end, in one or two sentences.'
+      },
+      difficulty: {
+        type: 'string',
+        enum: ['beginner', 'intermediate', 'advanced'],
+        description: 'Where the course starts, relative to the stated audience.'
+      },
+      chapters: { type: 'integer', description: 'Number of chapters, 1 to 10.' },
+      lessonsPerChapter: { type: 'integer', description: 'Lessons in each chapter, 1 to 10.' },
+      minutesPerLesson: {
+        type: 'integer',
+        description: 'Rough working time per lesson, 15 to 180.'
+      },
+      includeTests: { type: 'boolean', description: 'Whether each chapter ends with a test.' },
+      includeFinalExam: {
+        type: 'boolean',
+        description: 'Whether the course ends with a final exam.'
+      }
+    },
+    required: ['topic', 'difficulty', 'chapters', 'lessonsPerChapter', 'minutesPerLesson']
+  }
+}
+
+function clampInt(value: unknown, min: number, max: number, fallback: number): number {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(max, Math.max(min, n))
+}
+
+/** The model's tool input is untrusted — coerce it into a brief the UI can render. */
+function briefFromToolInput(input: unknown): CourseBrief | null {
+  if (!input || typeof input !== 'object') return null
+  const raw = input as Record<string, unknown>
+  const topic = typeof raw.topic === 'string' ? raw.topic.trim() : ''
+  if (!topic) return null
+
+  const difficulty =
+    raw.difficulty === 'beginner' || raw.difficulty === 'advanced' ? raw.difficulty : 'intermediate'
+
+  return {
+    topic,
+    audience: typeof raw.audience === 'string' ? raw.audience : undefined,
+    goals: typeof raw.goals === 'string' ? raw.goals : undefined,
+    difficulty,
+    chapters: clampInt(raw.chapters, 1, 10, 4),
+    lessonsPerChapter: clampInt(raw.lessonsPerChapter, 1, 10, 5),
+    minutesPerLesson: clampInt(raw.minutesPerLesson, 15, 180, 45),
+    includeTests: raw.includeTests !== false,
+    includeFinalExam: raw.includeFinalExam !== false
+  }
+}
 
 /**
  * The stable half of the prompt. Everything volatile (scroll position, the
@@ -248,7 +328,7 @@ async function buildHistory(history: TeacherMessage[]): Promise<BetaMessageParam
  * Streaming
  * ------------------------------------------------------------------ */
 
-function describeError(err: unknown): string {
+export function describeError(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {
     return 'Your API key was rejected. Check it in Settings → Teacher.'
   }
@@ -306,64 +386,95 @@ export async function streamTeacher(
     const positionNote = buildPositionNote(request.context)
     const prompt = positionNote ? `${positionNote}\n\n${request.prompt}` : request.prompt
 
-    const stream = anthropic.beta.messages.stream(
-      {
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        thinking: { type: 'adaptive', display: 'summarized' },
-        output_config: { effort: 'high' },
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default',
-        system: [
-          { type: 'text', text: SYSTEM_PROMPT },
-          {
-            type: 'text',
-            text: buildContextBlock(request.context),
-            // Caches the system prompt and the whole lesson body, so every
-            // follow-up in this thread re-reads it at ~10% of input price.
-            cache_control: { type: 'ephemeral' }
-          }
-        ],
-        messages: [
-          ...history,
-          userTurn(
-            prompt,
-            attachments.map((a) => ({
-              kind: a.kind,
-              name: a.name,
-              mediaType: a.mediaType,
-              data: a.data
-            }))
-          )
-        ]
-      },
-      { signal: controller.signal }
-    )
+    const messages: BetaMessageParam[] = [
+      ...history,
+      userTurn(
+        prompt,
+        attachments.map((a) => ({
+          kind: a.kind,
+          name: a.name,
+          mediaType: a.mediaType,
+          data: a.data
+        }))
+      )
+    ]
 
-    for await (const event of stream) {
-      if (event.type !== 'content_block_delta') continue
-      if (event.delta.type === 'text_delta') {
-        emit({ requestId, type: 'text-delta', text: event.delta.text })
-      } else if (event.delta.type === 'thinking_delta') {
-        emit({ requestId, type: 'thinking-delta', text: event.delta.thinking })
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+      const stream = anthropic.beta.messages.stream(
+        {
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          thinking: { type: 'adaptive', display: 'summarized' },
+          output_config: { effort: 'high' },
+          betas: ['server-side-fallback-2026-07-01'],
+          fallbacks: 'default',
+          tools: [PROPOSE_COURSE_TOOL],
+          system: [
+            { type: 'text', text: SYSTEM_PROMPT },
+            {
+              type: 'text',
+              text: buildContextBlock(request.context),
+              // Caches the system prompt and the whole lesson body, so every
+              // follow-up in this thread re-reads it at ~10% of input price.
+              cache_control: { type: 'ephemeral' }
+            }
+          ],
+          messages
+        },
+        { signal: controller.signal }
+      )
+
+      for await (const event of stream) {
+        if (event.type !== 'content_block_delta') continue
+        if (event.delta.type === 'text_delta') {
+          emit({ requestId, type: 'text-delta', text: event.delta.text })
+        } else if (event.delta.type === 'thinking_delta') {
+          emit({ requestId, type: 'thinking-delta', text: event.delta.thinking })
+        }
       }
+
+      const final = await stream.finalMessage()
+
+      // Check the stop reason before trusting `content` — a refusal can arrive
+      // with an empty or partial content array.
+      if (final.stop_reason === 'refusal') {
+        emit({
+          requestId,
+          type: 'error',
+          message:
+            'Claude declined to answer that one. Try rephrasing, or ask about the lesson material directly.'
+        })
+        return
+      }
+
+      if (final.stop_reason !== 'tool_use') {
+        emit({ requestId, type: 'done', stopReason: final.stop_reason, model: final.model })
+        return
+      }
+
+      // Thinking and tool_use blocks have to ride back unedited for the next turn.
+      messages.push({ role: 'assistant', content: final.content as BetaContentBlockParam[] })
+
+      const results: BetaContentBlockParam[] = []
+      for (const block of final.content) {
+        if (block.type !== 'tool_use') continue
+        const proposal = briefFromToolInput(block.input)
+        if (proposal) emit({ requestId, type: 'course-proposal', proposal })
+        results.push({
+          type: 'tool_result',
+          tool_use_id: block.id,
+          content: proposal
+            ? 'The proposal card is now showing under your message. The learner can edit it and press Build, or ignore it.'
+            : 'That proposal was missing a topic, so nothing was shown. Ask the learner what the course should cover.',
+          is_error: !proposal
+        })
+      }
+      messages.push({ role: 'user', content: results })
     }
 
-    const final = await stream.finalMessage()
-
-    // Check the stop reason before trusting `content` — a refusal can arrive
-    // with an empty or partial content array.
-    if (final.stop_reason === 'refusal') {
-      emit({
-        requestId,
-        type: 'error',
-        message:
-          'Claude declined to answer that one. Try rephrasing, or ask about the lesson material directly.'
-      })
-      return
-    }
-
-    emit({ requestId, type: 'done', stopReason: final.stop_reason, model: final.model })
+    // Ran out of rounds with the model still calling tools; close the turn out
+    // rather than leaving the renderer waiting forever.
+    emit({ requestId, type: 'done', stopReason: 'tool_use', model: MODEL })
   } catch (err) {
     if (controller.signal.aborted) {
       emit({ requestId, type: 'done', stopReason: 'aborted', model: MODEL })

@@ -8,6 +8,7 @@ import { SearchDialog } from './features/search/SearchDialog'
 import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
 import { useTheme } from './hooks/useTheme'
 import { useContent } from './stores/content'
+import { useCourseGen } from './stores/courseGen'
 import { useProgress } from './stores/progress'
 import { useSettings } from './stores/settings'
 import { useTeacher } from './stores/teacher'
@@ -16,6 +17,7 @@ import { TeacherFab } from './features/teacher/TeacherFab'
 import { TeacherPanel } from './features/teacher/TeacherPanel'
 import { HomePage } from './features/home/HomePage'
 import { LibraryPage } from './features/library/LibraryPage'
+import { CreateCoursePanel } from './features/library/CreateCoursePanel'
 import { CoursePage } from './features/library/CoursePage'
 import { LessonPage } from './features/lesson/LessonPage'
 import { TestPage } from './features/test/TestPage'
@@ -38,6 +40,13 @@ export default function App(): React.JSX.Element {
   const teacherEnabled = useSettings((s) => s.settings.aiEnabled)
   const teacherOpen = useUi((s) => s.teacherOpen)
   const setTeacherOpen = useUi((s) => s.setTeacherOpen)
+  const toast = useUi((s) => s.toast)
+
+  const handleCourseGenEvent = useCourseGen((s) => s.handleEvent)
+  const courseGenStage = useCourseGen((s) => s.stage)
+  const courseTitle = useCourseGen((s) => s.plan?.title)
+  const createCourseOpen = useCourseGen((s) => s.open)
+  const reloadContent = useContent((s) => s.reload)
 
   // Before a key exists the button is still shown, as the way to discover the
   // feature. Once a key is set, the Settings toggle controls it.
@@ -57,6 +66,22 @@ export default function App(): React.JSX.Element {
 
   // One subscription for the whole app; the store routes by request id.
   useEffect(() => window.desklearner.ai.onStreamEvent(handleStreamEvent), [handleStreamEvent])
+
+  // A course build outlives the panel, so its events are handled app-wide too.
+  useEffect(
+    () => window.desklearner.courseGen.onEvent(handleCourseGenEvent),
+    [handleCourseGenEvent]
+  )
+
+  // A finished build is only in the library once the index is re-read. If the
+  // learner closed the panel and carried on reading, say so out loud.
+  useEffect(() => {
+    if (courseGenStage !== 'done') return
+    void reloadContent()
+    if (!createCourseOpen && courseTitle) {
+      toast(`“${courseTitle}” is ready in your library`, 'success')
+    }
+  }, [courseGenStage, courseTitle, createCourseOpen, reloadContent, toast])
 
   // Navigating away from course material — or turning the feature off — closes
   // the panel so it can't hover over an unrelated page.
@@ -87,10 +112,7 @@ export default function App(): React.JSX.Element {
             <Route path="/" element={<HomePage />} />
             <Route path="/library" element={<LibraryPage />} />
             <Route path="/course/:courseId" element={<CoursePage />} />
-            <Route
-              path="/course/:courseId/lesson/:chapterId/:lessonId"
-              element={<LessonPage />}
-            />
+            <Route path="/course/:courseId/lesson/:chapterId/:lessonId" element={<LessonPage />} />
             <Route path="/course/:courseId/test/:testId" element={<TestPage />} />
             <Route path="/course/:courseId/test/:testId/history" element={<TestHistoryPage />} />
             <Route path="/bookmarks" element={<BookmarksPage />} />
@@ -103,6 +125,7 @@ export default function App(): React.JSX.Element {
       </div>
       {onLesson && teacherAvailable && <TeacherFab />}
       {(onLesson || onTest) && teacherAvailable && <TeacherPanel />}
+      <CreateCoursePanel />
       <CommandPalette />
       <SearchDialog />
       <Toaster />
